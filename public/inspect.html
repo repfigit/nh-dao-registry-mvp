@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NH DAO Registry, inspect filings</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background:#f8fafc; color:#0f172a; }
+  .chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.15rem 0.55rem; border-radius:9999px; font-size:0.72rem; font-weight:600; }
+  .chip-navy { background:#e0e7ff; color:#1f3a8a; }
+  .chip-teal { background:#ccfbf1; color:#0f766e; }
+  pre.json { background:#0f172a; color:#e2e8f0; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; line-height:1.45; padding:0.75rem; border-radius:0.5rem; max-height:340px; overflow:auto; }
+  .check-ok   { color:#166534; }
+  .check-fail { color:#9a3412; }
+  details summary { cursor:pointer; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="max-w-6xl mx-auto px-4 pt-8 pb-4">
+  <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
+    <div class="flex items-center gap-2">
+      <span class="chip chip-navy">v0.6 reference</span>
+    </div>
+    <nav class="text-xs text-slate-600">
+      <a href="/" class="font-medium underline">File a DAO</a>
+      <span class="mx-1">·</span>
+      <a href="/inspect" class="font-medium underline">Inspect filings</a>
+      <span class="mx-1">·</span>
+      <a href="/.well-known/did.json" class="font-medium underline">Registry DID</a>
+    </nav>
+  </div>
+  <h1 class="text-2xl font-bold tracking-tight">Inspect filings</h1>
+  <p class="text-slate-600 mt-1 text-sm">All registered DAOs. Click "Verify" to run end-to-end checks: signatures, bidirectional alsoKnownAs, on-chain anchors, and the IPFS governance hash.</p>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 pb-16">
+
+  <div id="empty" class="hidden bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center text-sm text-slate-500">
+    No filings yet. <a href="/" class="text-indigo-700 underline">File one</a>.
+  </div>
+
+  <div id="warn" class="hidden mb-4 p-3 rounded-md bg-amber-50 border border-amber-300 text-xs text-amber-800">
+    Chain anchoring is not configured. Set <code>AMOY_RPC_URL</code>, <code>ANCHOR_CONTRACT_ADDRESS</code>, and <code>ANCHOR_PRIVATE_KEY</code> in <code>.env</code>, then deploy the contract with <code>npm run deploy:amoy</code>.
+  </div>
+
+  <ul id="list" class="space-y-4"></ul>
+</main>
+
+<template id="row">
+  <li class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+    <div class="flex items-start justify-between flex-wrap gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-base font-semibold" data-name></span>
+          <span class="hidden chip" style="background:#fef3c7;color:#92400e" data-warning-chip>⚠ warnings</span>
+        </div>
+        <div class="text-xs text-slate-700 break-all mt-0.5" data-did></div>
+        <div class="text-xs text-slate-500 mt-0.5">Filed: <span data-filed></span></div>
+      </div>
+      <div class="flex gap-2">
+        <a class="text-xs font-semibold bg-slate-900 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer" data-link-dao>DAO did.json</a>
+        <a class="text-xs font-semibold bg-slate-900 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer" data-link-agent>Agent did.json</a>
+        <button class="text-xs font-semibold bg-emerald-700 text-white px-3 py-1.5 rounded-md" data-verify>Verify</button>
+      </div>
+    </div>
+    <div class="mt-3 hidden rounded-md border border-amber-300 bg-amber-50 p-3" data-warnings>
+      <div class="text-xs font-semibold text-amber-900 mb-1">Warnings</div>
+      <ul class="text-xs text-amber-800 space-y-1" data-warnings-list></ul>
+    </div>
+    <div class="mt-3 hidden" data-checks></div>
+    <details class="mt-3"><summary class="text-xs font-semibold">Show DAO document</summary><pre class="json mt-2" data-dao></pre></details>
+    <details class="mt-2"><summary class="text-xs font-semibold">Show agent document</summary><pre class="json mt-2" data-agent></pre></details>
+  </li>
+</template>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+function describeWarning(w) {
+  if (w.category === 'ipfs') {
+    if (w.state === 'cid-mismatch') return `Public IPFS pin returned a different CID (${w.remoteCid || 'unknown'}); the DID document records the local CID.`;
+    if (w.state === 'failed')       return `Public IPFS pin failed: ${w.detail}. Local pin is still active.`;
+    return w.detail || 'IPFS warning';
+  }
+  if (w.category === 'anchor') {
+    if (w.kind === 'config') return 'Polygon Amoy chain anchor is not configured.';
+    return `Chain anchor for ${w.kind} document failed: ${w.detail}`;
+  }
+  return JSON.stringify(w);
+}
+
+function renderRecordWarnings(li, meta) {
+  const panel = li.querySelector('[data-warnings]');
+  const list  = li.querySelector('[data-warnings-list]');
+  // Filter out the "anchor disabled" warning if the global banner is already
+  // showing it — avoids one warning per record cluttering the list.
+  const filtered = (meta.warnings || []).filter(w => !(w.category === 'anchor' && w.kind === 'config'));
+  list.replaceChildren();
+  if (filtered.length === 0) { panel.classList.add('hidden'); return; }
+  for (const w of filtered) {
+    const item = document.createElement('li');
+    item.textContent = `• ${describeWarning(w)}`;
+    list.appendChild(item);
+  }
+  panel.classList.remove('hidden');
+}
+
+/** Render verifier checks as DOM nodes — `detail` may include error text. */
+function renderChecks(checks, report) {
+  checks.replaceChildren();
+  const wrap = document.createElement('div');
+  wrap.className = 'rounded-md border border-slate-200 p-3 bg-slate-50';
+
+  const summary = document.createElement('div');
+  summary.className = `text-sm font-semibold mb-2 ${report.ok ? 'check-ok' : 'check-fail'}`;
+  summary.textContent = report.ok ? '✔ verified' : '✘ verification failed';
+  wrap.appendChild(summary);
+
+  const ul = document.createElement('ul');
+  ul.className = 'text-xs space-y-1';
+  for (const c of report.checks) {
+    const li = document.createElement('li');
+    li.className = c.ok ? 'check-ok' : 'check-fail';
+    li.append(`${c.ok ? '✔' : '✘'} ${c.name} `);
+    const detail = document.createElement('span');
+    detail.className = 'text-slate-500';
+    detail.textContent = `(${c.detail})`;
+    li.appendChild(detail);
+    ul.appendChild(li);
+  }
+  wrap.appendChild(ul);
+  checks.appendChild(wrap);
+}
+
+async function loadList() {
+  const res = await fetch('/api/records');
+  const { records, anchorEnabled } = await res.json();
+  if (!anchorEnabled) $('warn').classList.remove('hidden');
+  if (records.length === 0) { $('empty').classList.remove('hidden'); return; }
+
+  const tpl = $('row');
+  for (const r of records) {
+    const li = tpl.content.firstElementChild.cloneNode(true);
+    li.querySelector('[data-name]').textContent  = r.daoName;
+    li.querySelector('[data-did]').textContent   = r.daoDid;
+    li.querySelector('[data-filed]').textContent = r.filed;
+    li.querySelector('[data-link-dao]').href     = `/dao/${r.registryId}/did.json`;
+    li.querySelector('[data-link-agent]').href   = `/agent/${r.registryId}/did.json`;
+    if (r.hasWarnings) li.querySelector('[data-warning-chip]').classList.remove('hidden');
+
+    const full = await fetch(`/api/records/${r.registryId}`).then(x => x.json());
+    li.querySelector('[data-dao]').textContent   = JSON.stringify(full.dao,   null, 2);
+    li.querySelector('[data-agent]').textContent = JSON.stringify(full.agent, null, 2);
+    renderRecordWarnings(li, full.meta || {});
+
+    const checks = li.querySelector('[data-checks]');
+    li.querySelector('[data-verify]').addEventListener('click', async () => {
+      checks.classList.remove('hidden');
+      checks.replaceChildren();
+      const pending = document.createElement('div');
+      pending.className = 'text-xs text-slate-500';
+      pending.textContent = 'Verifying...';
+      checks.appendChild(pending);
+      const v = await fetch(`/api/verify/${r.registryId}`).then(x => x.json());
+      renderChecks(checks, v);
+    });
+
+    document.getElementById('list').appendChild(li);
+  }
+}
+
+loadList().catch(e => {
+  const list = document.getElementById('list');
+  list.replaceChildren();
+  const li = document.createElement('li');
+  li.className = 'bg-rose-50 border border-rose-300 text-rose-800 text-xs rounded-md p-3';
+  li.textContent = `Error loading records: ${e.message}`;
+  list.appendChild(li);
+});
+</script>
+</body>
+</html>

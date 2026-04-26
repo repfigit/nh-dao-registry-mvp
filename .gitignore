@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.local
+artifacts/
+cache/
+typechain-types/
+data/records/
+data/keys/
+data/blobs/
+data/_*tmp*/
+data/deployment-*.json
+coverage/
+*.log
+.DS_Store

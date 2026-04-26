@@ -1,0 +1,38 @@
+{
+  "name": "nh-dao-registry-mvp",
+  "version": "0.6.0",
+  "description": "Reference implementation of the NH DAO Registry POC (v0.6): two-DID model with did:web identifiers, mandatory IPFS pinning, Polygon Amoy chain anchor.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "hardhat test test/DAORegistryAnchor.test.cjs && node --test test/e2e.test.js",
+    "test:contract": "hardhat test test/DAORegistryAnchor.test.cjs",
+    "test:e2e": "node --test test/e2e.test.js",
+    "test:integration": "hardhat compile && node --test test/integration.test.js",
+    "compile": "hardhat compile",
+    "deploy:amoy": "hardhat run scripts/deploy.cjs --network amoy",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
+    "node:local": "hardhat node",
+    "verify": "node scripts/verify-record.js"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.21.0",
+    "multiformats": "^13.1.0"
+  },
+  "optionalDependencies": {
+    "@web3-storage/w3up-client": "^16.0.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  }
+}
