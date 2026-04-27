@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+node_modules
+npm-debug.log*
+Dockerfile
+.dockerignore
+data
+artifacts
+cache
+coverage
+.DS_Store

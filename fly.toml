@@ -1,0 +1,39 @@
+app = "nh-dao-registry-mvp"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  REGISTRY_SCHEME = "https"
+  REGISTRY_HOST = "nh-dao-registry-mvp.fly.dev"
+  REQUEST_BODY_LIMIT = "5mb"
+  MAX_GOVERNANCE_BYTES = "5242880"
+  ANCHOR_MAX_RETRIES = "3"
+  ANCHOR_BASE_DELAY_MS = "500"
+
+[mounts]
+  source = "registry_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
