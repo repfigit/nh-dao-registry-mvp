@@ -6,51 +6,129 @@
 <title>NH DAO Registry, file a registration</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  :root { --navy:#1f3a8a; --teal:#0f766e; --purple:#6d28d9;
-          --navy-soft:#e0e7ff; --teal-soft:#ccfbf1; --purple-soft:#ede9fe;
-          --ink:#0f172a; --paper:#f8fafc; --line:#e5e7eb; }
-  body { background: var(--paper); color: var(--ink); }
-  .chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.15rem 0.55rem; border-radius:9999px; font-size:0.72rem; font-weight:600; }
-  .chip-navy { background:var(--navy-soft); color:var(--navy); }
-  .chip-teal { background:var(--teal-soft); color:var(--teal); }
-  .chip-purple { background:var(--purple-soft); color:var(--purple); }
+  :root {
+    --nh-blue:#083b73;
+    --nh-blue-2:#0b4f93;
+    --nh-red:#b21f2d;
+    --nh-gold:#c69214;
+    --ink:#172033;
+    --muted:#5f6b7a;
+    --paper:#f3f6fa;
+    --panel:#ffffff;
+    --line:#d7dee8;
+    --blue-soft:#e8f1fb;
+    --red-soft:#fff0f2;
+    --green:#1f7a54;
+  }
+  body {
+    background:
+      linear-gradient(180deg, #eef4fb 0, #f7f9fc 360px, #f3f6fa 100%);
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .top-rule { height:6px; background:linear-gradient(90deg,var(--nh-blue),var(--nh-red)); }
+  .gov-shell { max-width:1180px; margin:0 auto; padding:0 1rem; }
+  .gov-header {
+    background:rgba(255,255,255,.94);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 10px 30px rgba(8,59,115,.08);
+  }
+  .brand-mark {
+    width:42px; height:42px; display:grid; place-items:center;
+    border:2px solid var(--nh-blue); color:var(--nh-blue); font-weight:800;
+    letter-spacing:-.04em; background:#fff; border-radius:4px;
+  }
+  .eyebrow { color:var(--nh-red); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
+  .nav-link { color:#24435f; font-size:.82rem; font-weight:700; text-decoration:none; }
+  .nav-link:hover { color:var(--nh-red); }
+  .hero-band {
+    border:1px solid #cdd8e5;
+    background:
+      linear-gradient(135deg, rgba(8,59,115,.96), rgba(10,82,145,.92)),
+      radial-gradient(circle at 90% 10%, rgba(198,146,20,.35), transparent 36%);
+    color:#fff;
+    box-shadow:0 18px 45px rgba(8,59,115,.18);
+    border-radius:8px;
+  }
+  .quick-tile {
+    border:1px solid #cad6e3; background:#fff; border-radius:6px;
+    box-shadow:0 6px 18px rgba(23,32,51,.06);
+  }
+  .panel {
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 10px 28px rgba(23,32,51,.08);
+  }
+  .section-title { color:var(--nh-blue); font-weight:800; letter-spacing:.01em; }
+  label span.text-sm { color:#21364d; }
+  input, select {
+    border-color:#b9c5d2 !important; border-radius:6px !important;
+    box-shadow:inset 0 1px 2px rgba(23,32,51,.04);
+  }
+  input:focus {
+    outline:2px solid rgba(8,59,115,.18); border-color:var(--nh-blue-2) !important;
+  }
+  .chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.55rem; border-radius:4px; font-size:0.72rem; font-weight:800; letter-spacing:.02em; }
+  .chip-navy { background:var(--blue-soft); color:var(--nh-blue); }
+  .chip-teal { background:#e8f7f1; color:var(--green); }
+  .chip-purple { background:var(--red-soft); color:var(--nh-red); }
   .note-ok { color:#166534; }
   .note-warn { color:#9a3412; }
-  textarea.json { background:#0f172a; color:#e2e8f0; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.45; padding:0.75rem; border-radius:0.5rem; width:100%; min-height:280px; }
+  textarea.json { background:#111827; color:#e2e8f0; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.45; padding:0.75rem; border-radius:6px; width:100%; min-height:280px; }
   .divider { height:1px; background:var(--line); margin:1.25rem 0; }
+  .primary-btn { background:var(--nh-red); color:#fff; border-radius:6px; }
+  .primary-btn:hover { background:#931925; }
+  .primary-btn:disabled { background:#aeb8c5; }
+  .dark-btn { background:var(--nh-blue); color:#fff; border-radius:6px; }
+  .dark-btn:hover { background:#062f5c; }
 </style>
 </head>
 <body class="min-h-screen">
 
-<header class="max-w-5xl mx-auto px-4 pt-8 pb-4">
-  <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
-    <div class="flex items-center gap-2">
-      <span class="chip chip-navy">v0.6 reference</span>
-      <span class="chip chip-teal">did:web</span>
-      <span class="chip chip-purple">Polygon Amoy</span>
+<div class="top-rule"></div>
+<header class="gov-header">
+  <div class="gov-shell py-4">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center gap-3">
+        <div class="brand-mark">NH</div>
+        <div>
+          <div class="eyebrow">New Hampshire Secretary of State</div>
+          <div class="text-xl font-extrabold tracking-tight text-slate-900">DAO Registry QuickStart</div>
+          <div class="text-xs text-slate-500">Corporation Division digital filing prototype</div>
+        </div>
+      </div>
+      <nav class="flex items-center gap-4">
+        <a href="/" class="nav-link">File</a>
+        <a href="/inspect" class="nav-link">Inspect</a>
+        <a href="/.well-known/did.json" class="nav-link">Registry DID</a>
+      </nav>
     </div>
-    <nav class="text-xs text-slate-600">
-      <a href="/" class="font-medium underline">File a DAO</a>
-      <span class="mx-1">·</span>
-      <a href="/inspect" class="font-medium underline">Inspect filings</a>
-      <span class="mx-1">·</span>
-      <a href="/.well-known/did.json" class="font-medium underline">Registry DID</a>
-    </nav>
   </div>
-  <h1 class="text-2xl font-bold tracking-tight">File a NH DAO registration</h1>
-  <p class="text-slate-600 mt-1 text-sm">
-    Fills in real <code>did:web</code> documents. The registry signs them with its
-    Ed25519 controller key, pins the governance bytes to IPFS, and writes a hash anchor
-    to the Polygon Amoy <code>DAORegistryAnchor</code> contract. Both DID documents are
-    served at resolvable HTTPS URLs after filing. The registry records evidence intake;
-    it does not certify legal status.
-  </p>
 </header>
 
-<main class="max-w-5xl mx-auto px-4 pb-16">
-  <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-    <details id="apiKeySection" class="mb-4 rounded-md border border-slate-200 bg-slate-50">
-      <summary class="cursor-pointer text-xs font-semibold px-3 py-2 select-none">
+<main class="gov-shell pb-16">
+  <section class="hero-band mt-6 p-6 md:p-8">
+    <div class="grid md:grid-cols-[1.5fr_1fr] gap-6 items-end">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <span class="chip bg-white text-[#083b73]">v0.6 reference</span>
+          <span class="chip bg-white/15 text-white">did:web</span>
+          <span class="chip bg-white/15 text-white">Polygon Amoy</span>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">File a NH DAO registration</h1>
+        <p class="text-blue-50 mt-3 text-sm max-w-3xl">
+          Submit a DAO evidence intake, publish signed DID documents, pin governance bytes, and prepare a verifiable registry record.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <a class="quick-tile p-4 text-[#083b73] font-bold text-sm" href="/inspect">Inspect filings</a>
+        <a class="quick-tile p-4 text-[#083b73] font-bold text-sm" href="/.well-known/did.json">Registry DID</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel mt-5 p-5 md:p-6">
+    <details id="apiKeySection" class="mb-4 rounded-md border border-slate-300 bg-[#f6f8fb]">
+      <summary class="cursor-pointer text-xs font-bold px-3 py-2 select-none text-[#083b73]">
         API key (only required if <code>FILING_API_KEY</code> is set on the server)
       </summary>
       <div class="px-3 pb-3 pt-1">
@@ -109,8 +187,8 @@
 
       <div>
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">Smart contracts</h3>
-          <button type="button" id="addContract" class="text-xs font-medium text-indigo-700 hover:text-indigo-900">+ Add a contract</button>
+          <h3 class="text-sm section-title">Smart contracts</h3>
+          <button type="button" id="addContract" class="text-xs font-bold text-[#083b73] hover:text-[#b21f2d]">+ Add a contract</button>
         </div>
         <p class="text-xs text-slate-500 mt-1">At least one public DAO contract address is required. Use a CAIP-2 chainId (e.g. <code>eip155:1</code>, <code>eip155:137</code>) plus an EVM address.</p>
         <div id="contractRows" class="mt-3 space-y-2"></div>
@@ -119,7 +197,7 @@
       <div class="divider"></div>
 
       <div>
-        <h3 class="text-sm font-semibold">RSA 301-B evidence intake</h3>
+        <h3 class="text-sm section-title">RSA 301-B evidence intake</h3>
         <p class="text-xs text-slate-500 mt-1">MVP evidence checklist for registry listing. The registry records these claims in the signed DAO DID document but does not certify statutory compliance.</p>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <label class="block">
@@ -152,8 +230,8 @@
           </label>
         </div>
 
-        <div class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
-          <div class="text-xs font-semibold text-slate-700 mb-2">Required attestations</div>
+        <div class="mt-4 rounded-md border border-slate-300 bg-[#f6f8fb] p-3">
+          <div class="text-xs font-bold text-[#083b73] mb-2">Required attestations</div>
           <div class="grid md:grid-cols-2 gap-2 text-xs text-slate-700">
             <label><input class="attestation mr-2" type="checkbox" id="att-permissionlessBlockchain">Deployed on a permissionless blockchain</label>
             <label><input class="attestation mr-2" type="checkbox" id="att-openSourceCode">Software code is open source in a public forum</label>
@@ -175,23 +253,23 @@
 
       <div class="flex items-center justify-between flex-wrap gap-3">
         <div id="status" class="text-xs text-slate-600">Fill the required fields to enable filing.</div>
-        <button id="fileBtn" type="submit" disabled class="bg-indigo-600 disabled:bg-slate-300 text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-indigo-700">
+        <button id="fileBtn" type="submit" disabled class="primary-btn text-sm font-bold px-5 py-2.5">
           File registration
         </button>
       </div>
     </form>
   </section>
 
-  <section id="result" class="hidden mt-8 bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+  <section id="result" class="hidden mt-8 panel p-5 md:p-6">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h2 class="font-semibold">Evidence intake recorded</h2>
         <p class="text-xs text-slate-500">Two DID documents produced and now resolvable. Legal status is not determined by this registry. Anchored on Polygon Amoy if configured.</p>
       </div>
       <div class="flex gap-2">
-        <a id="lnkDao"   class="text-xs font-semibold bg-slate-900 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer">View DAO did.json</a>
-        <a id="lnkAgent" class="text-xs font-semibold bg-slate-900 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer">View agent did.json</a>
-        <a id="lnkVerify" class="text-xs font-semibold bg-emerald-700 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer">Run verification</a>
+        <a id="lnkDao"   class="text-xs font-bold dark-btn px-3 py-1.5" target="_blank" rel="noreferrer">View DAO did.json</a>
+        <a id="lnkAgent" class="text-xs font-bold dark-btn px-3 py-1.5" target="_blank" rel="noreferrer">View agent did.json</a>
+        <a id="lnkVerify" class="text-xs font-bold primary-btn px-3 py-1.5" target="_blank" rel="noreferrer">Run verification</a>
       </div>
     </div>
 
@@ -203,7 +281,7 @@
     </div>
 
     <div class="grid md:grid-cols-2 gap-4">
-      <div class="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+      <div class="rounded-md border border-[#c7d7e8] bg-[#f3f8fd] p-4">
         <div class="flex items-center gap-2 mb-2"><span class="chip chip-navy">DAO</span></div>
         <div class="text-sm font-semibold" id="r-daoName"></div>
         <div class="text-xs text-slate-700 mt-1 break-all" id="r-daoDid"></div>
@@ -213,7 +291,7 @@
         <div class="text-xs text-slate-600">Compliance: <span id="r-compliance"></span></div>
         <div class="text-xs text-slate-600">Anchor tx: <span id="r-anchorTx"></span></div>
       </div>
-      <div class="rounded-lg border border-teal-200 bg-teal-50 p-4">
+      <div class="rounded-md border border-[#cde3dc] bg-[#f2fbf7] p-4">
         <div class="flex items-center gap-2 mb-2"><span class="chip chip-teal">Registered agent</span></div>
         <div class="text-sm font-semibold" id="r-agentName"></div>
         <div class="text-xs text-slate-700 mt-1 break-all" id="r-agentDid"></div>
