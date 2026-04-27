@@ -5,11 +5,14 @@
  * - Registered agent MUST have a physical NH street address.
  *   PO boxes are not accepted.
  * - Smart contract entries MUST be CAIP-2 chain id + EVM address.
+ * - RSA 301-B MVP compliance evidence MUST be complete before publication.
  *
  * These are duplicated in the browser for UX, but the server-side checks
  * here are authoritative. A registry that only validates client-side is
  * a registry that doesn't validate.
  */
+
+import { validateCompliance } from './compliance.js';
 
 const NAME_RX = /(?:^|\s)(DAO|LAO)$/i;
 const NH_RX = /\b(NH|N\.H\.|New\s+Hampshire)\b/i;
@@ -78,7 +81,21 @@ export function validateUrl(raw) {
   if (!ALLOWED_URL_SCHEMES.has(u.protocol)) {
     return { ok: false, error: `URL scheme ${u.protocol} not allowed (use http or https)` };
   }
+  if (!isPublicHostname(u.hostname)) {
+    return { ok: false, error: 'URL host must be public, not localhost or a private network address' };
+  }
   return { ok: true, value: v };
+}
+
+function isPublicHostname(hostname) {
+  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!h || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '::1') return false;
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!v4) return true;
+  const octets = v4.slice(1).map(Number);
+  if (octets.some(n => n < 0 || n > 255)) return false;
+  const [a, b] = octets;
+  return !(a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254));
 }
 
 export function validateContract(c) {
@@ -113,15 +130,28 @@ export function validateFiling(input) {
     if (!r.ok) errors.push({ field: `contracts[${i}]`, error: r.error });
     else out.contracts.push(r.value);
   }
+  if (out.contracts.length === 0) {
+    errors.push({ field: 'contracts', error: 'At least one DAO smart contract public address is required for RSA 301-B listing evidence' });
+  }
 
-  // Optional URLs: trim and validate shape if provided.
+  // Public evidence URLs required by the MVP RSA 301-B eligibility layer.
   for (const field of ['govUrl', 'sourceUrl', 'guiUrl']) {
     const v = (input[field] || '').trim();
-    if (v) {
-      const r = validateUrl(v);
-      if (!r.ok) errors.push({ field, error: r.error });
-      else out[field] = r.value;
-    }
+    const r = validateUrl(v);
+    if (!r.ok) errors.push({ field, error: r.error });
+    else out[field] = r.value;
+  }
+
+  const c = validateCompliance(input.compliance);
+  if (!c.ok) errors.push(...c.errors);
+  else {
+    out.compliance = {
+      ...c.value,
+      assurance: {
+        ...c.value.assurance,
+        evidenceUrlCount: c.value.assurance.evidenceUrlCount + 3, // govUrl, sourceUrl, guiUrl
+      },
+    };
   }
 
   return { ok: errors.length === 0, errors, value: out };

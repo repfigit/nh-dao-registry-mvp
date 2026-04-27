@@ -4,6 +4,8 @@
  * Routes:
  *
  *   GET  /                              filing UI
+ *   GET  /healthz                       process liveness
+ *   GET  /readyz                        local-store/key readiness
  *   GET  /inspect                       record list and inspector
  *   GET  /api/records                   list filings
  *   POST /api/file                      submit a filing
@@ -45,6 +47,38 @@ const FILING_API_KEY = filingApiKey();
 const app = express();
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
 app.use(express.static(PUBLIC_DIR));
+
+app.get('/healthz', (_, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/readyz', (_, res) => {
+  const checks = {
+    storeWritable: false,
+    controllerKeyAvailable: false,
+    anchorConfigured: anchorEnabled(),
+  };
+
+  try {
+    const tmp = path.resolve('data', `.readyz-${process.pid}.tmp`);
+    fs.mkdirSync(path.dirname(tmp), { recursive: true });
+    fs.writeFileSync(tmp, 'ok');
+    fs.rmSync(tmp, { force: true });
+    checks.storeWritable = true;
+  } catch {
+    checks.storeWritable = false;
+  }
+
+  try {
+    loadOrCreateKeyPair(CONTROLLER_KEY_PATH);
+    checks.controllerKeyAvailable = true;
+  } catch {
+    checks.controllerKeyAvailable = false;
+  }
+
+  const ready = checks.storeWritable && checks.controllerKeyAvailable;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready', checks });
+});
 
 /**
  * Constant-time string comparison. Avoids leaking the API key length

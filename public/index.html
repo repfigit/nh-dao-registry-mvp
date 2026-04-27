@@ -42,7 +42,8 @@
     Fills in real <code>did:web</code> documents. The registry signs them with its
     Ed25519 controller key, pins the governance bytes to IPFS, and writes a hash anchor
     to the Polygon Amoy <code>DAORegistryAnchor</code> contract. Both DID documents are
-    served at resolvable HTTPS URLs after filing.
+    served at resolvable HTTPS URLs after filing. The registry records evidence intake;
+    it does not certify legal status.
   </p>
 </header>
 
@@ -88,19 +89,19 @@
         </label>
 
         <label class="block">
-          <span class="text-sm font-medium">Governance document URL <span class="text-slate-400 font-normal">(optional)</span></span>
-          <input id="govUrl" type="url" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
+          <span class="text-sm font-medium">Governance / bylaws document URL</span>
+          <input id="govUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
           <p class="mt-1 text-xs text-slate-500">Even if you supply a URL, the registry pins a public copy and lists IPFS first.</p>
         </label>
 
         <label class="block">
-          <span class="text-sm font-medium">Source code URL <span class="text-slate-400 font-normal">(optional)</span></span>
-          <input id="sourceUrl" type="url" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://github.com/example/dao-contracts">
+          <span class="text-sm font-medium">Source code URL</span>
+          <input id="sourceUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://github.com/example/dao-contracts">
         </label>
 
         <label class="block md:col-span-2">
-          <span class="text-sm font-medium">DAO user interface URL <span class="text-slate-400 font-normal">(optional)</span></span>
-          <input id="guiUrl" type="url" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://app.example.org">
+          <span class="text-sm font-medium">DAO user interface URL</span>
+          <input id="guiUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://app.example.org">
         </label>
       </div>
 
@@ -108,11 +109,66 @@
 
       <div>
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">Smart contracts <span class="text-slate-400 font-normal text-xs">(optional)</span></h3>
+          <h3 class="text-sm font-semibold">Smart contracts</h3>
           <button type="button" id="addContract" class="text-xs font-medium text-indigo-700 hover:text-indigo-900">+ Add a contract</button>
         </div>
-        <p class="text-xs text-slate-500 mt-1">CAIP-2 chainId (e.g. <code>eip155:1</code>, <code>eip155:137</code>) plus an EVM address.</p>
+        <p class="text-xs text-slate-500 mt-1">At least one public DAO contract address is required. Use a CAIP-2 chainId (e.g. <code>eip155:1</code>, <code>eip155:137</code>) plus an EVM address.</p>
         <div id="contractRows" class="mt-3 space-y-2"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <h3 class="text-sm font-semibold">RSA 301-B evidence intake</h3>
+        <p class="text-xs text-slate-500 mt-1">MVP evidence checklist for registry listing. The registry records these claims in the signed DAO DID document but does not certify statutory compliance.</p>
+        <div class="mt-3 grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm font-medium">Registered domain</span>
+            <input id="registeredDomain" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="granite.example.org">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium">DAO public address</span>
+            <input id="publicAddress" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono" placeholder="0x...">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium">Quality assurance evidence URL</span>
+            <input id="qaUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/security-review.pdf">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium">Public communications URL</span>
+            <input id="communicationsUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://forum.example.org/contact">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium">Internal dispute resolution URL</span>
+            <input id="internalDisputeResolutionUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/disputes/internal">
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium">Third-party dispute resolution URL</span>
+            <input id="thirdPartyDisputeResolutionUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/disputes/third-party">
+          </label>
+          <label class="block md:col-span-2">
+            <span class="text-sm font-medium">Legal representative authorization URL</span>
+            <input id="legalRepresentativeAuthorizationUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://forum.example.org/legal-rep-authorization">
+          </label>
+        </div>
+
+        <div class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div class="text-xs font-semibold text-slate-700 mb-2">Required attestations</div>
+          <div class="grid md:grid-cols-2 gap-2 text-xs text-slate-700">
+            <label><input class="attestation mr-2" type="checkbox" id="att-permissionlessBlockchain">Deployed on a permissionless blockchain</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-openSourceCode">Software code is open source in a public forum</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-qaCompleted">Quality assurance testing completed</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-guiMonitoring">GUI supports public smart-contract monitoring</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-bylawsPublic">Bylaws are publicly accessible</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-publicCommunications">Public communications mechanism is accessible</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-internalDisputeResolution">Internal dispute mechanism is available</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-thirdPartyDisputeResolution">Third-party dispute mechanism is available</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-decentralizedNetwork">DAO satisfies decentralized-network requirement</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-decentralizedGovernance">DAO satisfies decentralized-governance requirement</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-participantRules">Bylaws specify participant and governance rights</label>
+            <label><input class="attestation mr-2" type="checkbox" id="att-legalRepresentativeAuthorized">Legal representative authority is publicly evidenced</label>
+          </div>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -129,8 +185,8 @@
   <section id="result" class="hidden mt-8 bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h2 class="font-semibold">Registration filed</h2>
-        <p class="text-xs text-slate-500">Two DID documents produced and now resolvable. Anchored on Polygon Amoy if configured.</p>
+        <h2 class="font-semibold">Evidence intake recorded</h2>
+        <p class="text-xs text-slate-500">Two DID documents produced and now resolvable. Legal status is not determined by this registry. Anchored on Polygon Amoy if configured.</p>
       </div>
       <div class="flex gap-2">
         <a id="lnkDao"   class="text-xs font-semibold bg-slate-900 text-white px-3 py-1.5 rounded-md" target="_blank" rel="noreferrer">View DAO did.json</a>
@@ -154,6 +210,7 @@
         <div class="text-xs text-slate-600 mt-2">Filed: <span id="r-filed"></span></div>
         <div class="text-xs text-slate-600">Hash: <code class="text-[11px]" id="r-daoHash"></code></div>
         <div class="text-xs text-slate-600">Governance CID: <code class="text-[11px] break-all" id="r-cid"></code></div>
+        <div class="text-xs text-slate-600">Compliance: <span id="r-compliance"></span></div>
         <div class="text-xs text-slate-600">Anchor tx: <span id="r-anchorTx"></span></div>
       </div>
       <div class="rounded-lg border border-teal-200 bg-teal-50 p-4">

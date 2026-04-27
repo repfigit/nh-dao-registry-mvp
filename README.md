@@ -8,9 +8,14 @@ Amoy chain anchor. No mocks in the critical path.
 
 For every filing, the registry does the following:
 
-1. Validates the four RSA 301-B fields. The DAO name must end in `DAO` or
-   `LAO`. The registered agent must have a physical NH street address; PO
-   boxes are rejected.
+1. Validates the RSA 301-B MVP intake fields. The DAO name must end in
+   `DAO` or `LAO`; the registered agent must have a physical NH street
+   address; PO boxes are rejected. The filing must also include public
+   eligibility evidence for bylaws, source code, GUI, smart-contract
+   public address, registered domain, QA testing, communications,
+   dispute-resolution mechanisms, legal-representative authorization, and
+   decentralization/governance attestations. Accepted filings are recorded as
+   evidence intake only; the registry does not certify legal status.
 2. Pins the governance bytes to IPFS, computing a real CIDv1. Mandatory.
 3. Builds a DAO `did:web` document and a registered-agent `did:web`
    document, linked bidirectionally via `alsoKnownAs`.
@@ -82,6 +87,8 @@ Open http://localhost:3000 and file a registration. After filing:
 - The agent `did.json` is at http://localhost:3000/agent/<registryId>/did.json
 - The verification report is at http://localhost:3000/api/verify/<registryId>
 - All records list at http://localhost:3000/inspect
+- Health and readiness probes are at http://localhost:3000/healthz and
+  http://localhost:3000/readyz
 
 ## Layout
 
@@ -89,7 +96,7 @@ Open http://localhost:3000 and file a registration. After filing:
 contracts/   Solidity DAORegistryAnchor + Hardhat config
 scripts/     deploy.cjs (Hardhat), verify-record.js (CLI verifier)
 src/         server, publication, didweb, crypto, canonicalize, ipfs,
-             anchor, resolver, verifier, validation, store
+             anchor, resolver, verifier, validation, compliance, store
 public/      filing UI (index.html, app.js) and inspector (inspect.html)
 test/        contract tests (Hardhat) and HTTP e2e tests (node:test)
 data/        runtime: keys, records, blobs, deployment metadata
@@ -107,8 +114,9 @@ npm run test:e2e          # HTTP e2e (does not require chain config)
 ```
 
 The e2e suite exercises validation, signing, did:web hosting, alsoKnownAs,
-IPFS hash verification, and the resolver. It does not require a chain
-connection; chain anchor checks are reported but not required to pass.
+IPFS hash verification, the RSA 301-B MVP evidence checklist, health/readiness
+probes, and the resolver. It does not require a chain connection; chain anchor
+checks are reported but not required to pass.
 
 The contract test suite covers ownership, sequential versioning,
 duplicate-version rejection, kind separation (DAO vs agent), and event

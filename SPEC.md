@@ -18,9 +18,9 @@ filing flow is at:
 
 This MVP implements:
 
-- §IV two-DID identity model (DAO DID + registered agent DID,
+- ?IV two-DID identity model (DAO DID + registered agent DID,
   bidirectional `alsoKnownAs`, controller signing both).
-- §V DID document schema:
+- ?V DID document schema:
   - `RegisteredAgent` service endpoint (DID-typed).
   - `DAOGovernanceDocument` service endpoint with ordered array of
     resolution URLs and `contentHash`.
@@ -29,15 +29,20 @@ This MVP implements:
   - `DAOSourceCode`, `DAOUserInterface`, `NHDAORegistryRecord`.
   - `AgentOfRecord` service endpoint on the agent document.
   - structured `registeredAgent.physicalAddress` object.
-- §VI naming rule validation (DAO name ends in `DAO` or `LAO`).
-- §VII NH physical street address validation (no PO boxes).
-- §VIII content hashing via canonicalized SHA-256.
-- §IX mandatory IPFS pinning on every filing.
-- §X chain anchor on Polygon Amoy via the `DAORegistryAnchor` Solidity
+- ?VI naming rule validation (DAO name ends in `DAO` or `LAO`).
+- ?VII NH physical street address validation (no PO boxes).
+- RSA 301-B MVP eligibility evidence validation: required governance/bylaws
+  URL, source URL, GUI URL, at least one smart-contract address, registered
+  domain, public DAO address, QA evidence, communications mechanism, dispute
+  resolution mechanisms, legal representative authorization, lifecycle
+  status, and decentralization/governance attestations.
+- ?VIII content hashing via canonicalized SHA-256.
+- ?IX mandatory IPFS pinning on every filing.
+- ?X chain anchor on Polygon Amoy via the `DAORegistryAnchor` Solidity
   contract; one transaction per (registryId, kind, version).
-- §XI `did:web` resolution: both documents are served at HTTP endpoints
+- ?XI `did:web` resolution: both documents are served at HTTP endpoints
   derivable from the DID identifier alone.
-- §XII end-to-end verification: signature, bidirectional link, chain
+- ?XII end-to-end verification: signature, bidirectional link, chain
   anchor, governance hash.
 
 ## Out of scope
@@ -54,8 +59,8 @@ For these, see the spec.
 
 ## MVP elaborations beyond the parent spec
 
-The parent POC spec (`§II.3 C3b`) explicitly says no smart contract is
-required for chain anchoring — calldata alone is sufficient. The MVP
+The parent POC spec (`?II.3 C3b`) explicitly says no smart contract is
+required for chain anchoring; calldata alone is sufficient. The MVP
 goes beyond that and uses a purpose-built contract
 (`DAORegistryAnchor`). This is an additive elaboration, not drift.
 Documenting it here so the choices are auditable:
@@ -71,7 +76,7 @@ Documenting it here so the choices are auditable:
   authentication on `POST /api/file`. The bundled UI surfaces a key
   field (sessionStorage). This is operator-grade convenience, not
   end-user SSO; production deployments still need SSO at the network
-  edge per the parent registry spec §6.
+  edge per the parent registry spec ?6.
 - **Controller key sourcing.** `CONTROLLER_PRIVATE_KEY` env var lets
   the controller key live in a secrets manager / KMS. Falls back to a
   JSON keyfile if unset (dev convenience).
@@ -81,6 +86,15 @@ Documenting it here so the choices are auditable:
   failed, CID mismatch) for an operator to act on. `meta.governance`
   carries `publicPinStatus`, `meta.anchorErrors` carries per-leg chain
   failures.
+- **Compliance checklist shape.** `meta.compliance` and the DAO DID
+  document's `NHDAOComplianceChecklist` service carry the normalized
+  RSA 301-B MVP evidence. A filing is rejected unless the checklist is
+  complete; accepted records use `status: "evidence-submitted"` and
+  `legalStatus: "not-determined"` to distinguish evidence intake from
+  legal certification.
+- **Health/readiness probes.** `/healthz` returns process liveness.
+  `/readyz` checks the writable local store and controller-key availability,
+  and reports whether chain anchoring is configured.
 - **Rate limiting.** Per-IP token-bucket limits on `/api/file` and
   `/api/verify/:id`. Tunable via env (`FILING_RATE_MAX`,
   `VERIFY_RATE_MAX`). Single-process only; production scale-out should

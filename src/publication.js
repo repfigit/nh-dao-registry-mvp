@@ -109,6 +109,7 @@ export async function file(input, ctx) {
           filed: nowIso(),
           sourceUrl: filing.sourceUrl || null,
           guiUrl:    filing.guiUrl    || null,
+          compliance: filing.compliance,
           note: 'Demo placeholder for the governance document. In production this is the bylaws PDF.',
         }));
     const cap = maxGovernanceBytes();
@@ -146,6 +147,7 @@ export async function file(input, ctx) {
     sourceUrl: filing.sourceUrl,
     guiUrl: filing.guiUrl,
     contracts: filing.contracts,
+    compliance: filing.compliance,
     created,
     version: INITIAL_VERSION,
   });
@@ -197,6 +199,7 @@ export async function file(input, ctx) {
       publicPinStatus: pinned.publicPinStatus,
     },
     contracts: filing.contracts,
+    compliance: filing.compliance,
     anchors,
     anchorErrors,
     daoHash:   `sha256:${daoHash}`,

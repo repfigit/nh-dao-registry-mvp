@@ -21,15 +21,27 @@ signing input and uses Ed25519 verify against the JWK in the document's
 `verificationMethod`.
 
 `src/validation.js`
-The two registry-enforced invariants:
+Registry-enforced filing invariants:
 
 - DAO name MUST end in `DAO` or `LAO`. RSA 301-B:2, III.
 - Registered agent MUST have a physical NH street address; PO boxes
   rejected.
+- RSA 301-B MVP compliance evidence MUST be complete before publication:
+  governance/bylaws URL, source URL, GUI URL, at least one smart-contract
+  address, registered domain, public address, QA evidence, communications
+  URL, dispute-resolution URLs, legal-representative authorization URL,
+  lifecycle status, and required attestations.
 
 Plus shape checks for CAIP-2 chain IDs and EVM addresses on smart
 contract entries. The browser duplicates these checks; the server-side
 checks here are authoritative.
+
+`src/compliance.js`
+Normalizes the RSA 301-B MVP evidence checklist into a stable
+`evidence-submitted` record with `legalStatus: "not-determined"`. It
+validates public URL evidence, registered domain shape, EVM public address
+shape, lifecycle status, and required boolean attestations. This is
+evidence-backed intake validation, not legal certification.
 
 `src/didweb.js`
 Builders for the two DID documents. Each document carries a single
@@ -38,7 +50,8 @@ own DID as `controller` for the entry but the registry as the parent
 controller URL). Service endpoints for the DAO document include
 `RegisteredAgent` (DID-typed), `DAOGovernanceDocument` (ordered array
 with IPFS first plus optional URL), `DAOSourceCode`, `DAOUserInterface`,
-zero or more `DAOSmartContract`, and `NHDAORegistryRecord`. The agent
+one or more `DAOSmartContract`, `NHDAOComplianceChecklist`, and
+`NHDAORegistryRecord`. The agent
 document carries `registeredAgent.physicalAddress` (structured),
 `AgentOfRecord` (DID-typed array pointing back at the DAO), and
 `NHDAORegistryRecord`.
@@ -98,7 +111,8 @@ documents, signs them, computes canonical hashes, anchors them on chain
 (one transaction per document, retried on transient failure), attaches
 the anchor metadata to each document, and persists everything to the
 store. Returns `{ registryId, dao, agent, meta, warnings }` to the
-caller. Non-fatal issues (chain anchor disabled, public IPFS pin
+caller. `meta.compliance` carries the normalized RSA 301-B MVP evidence.
+Non-fatal issues (chain anchor disabled, public IPFS pin
 failed, CID mismatch) appear in the `warnings` array rather than as
 exceptions. v0.6 hardcodes the initial version to 1; the contract
 already supports update workflows but `publication.js` does not yet
@@ -108,6 +122,8 @@ expose a re-filing path.
 Express server. Routes:
 
 - `GET /` filing UI
+- `GET /healthz` liveness probe
+- `GET /readyz` readiness probe
 - `GET /inspect` records list and inspector
 - `GET /api/records` list of filings
 - `GET /api/records/:id` full record

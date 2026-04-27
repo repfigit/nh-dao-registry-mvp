@@ -9,6 +9,32 @@ const PO_BOX_RX = /\b(P\.?\s*O\.?\s*Box|post\s+office\s+box)\b/i;
 const NH_RX = /\b(NH|N\.H\.|New\s+Hampshire)\b/i;
 const CAIP2_RX = /^eip155:\d+$/i;
 const EVM_ADDR_RX = /^0x[a-fA-F0-9]{40}$/;
+const DOMAIN_LABEL_RX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+const TLD_RX = /^[a-z]{2,63}$/i;
+const REQUIRED_URL_FIELDS = [
+  'govUrl',
+  'sourceUrl',
+  'guiUrl',
+  'qaUrl',
+  'communicationsUrl',
+  'internalDisputeResolutionUrl',
+  'thirdPartyDisputeResolutionUrl',
+  'legalRepresentativeAuthorizationUrl',
+];
+const ATTESTATION_FIELDS = [
+  'permissionlessBlockchain',
+  'openSourceCode',
+  'qaCompleted',
+  'guiMonitoring',
+  'bylawsPublic',
+  'publicCommunications',
+  'internalDisputeResolution',
+  'thirdPartyDisputeResolution',
+  'decentralizedNetwork',
+  'decentralizedGovernance',
+  'participantRules',
+  'legalRepresentativeAuthorized',
+];
 
 function setNote(id, ok, msg) {
   const el = $(id);
@@ -32,11 +58,45 @@ function checkAll() {
   const okName  = NAME_RX.test(daoName);
   const okAddr  = !PO_BOX_RX.test(addr) && NH_RX.test(addr) && /\d/.test(addr);
   const okBasic = !!$('agentName').value.trim() && !!$('agentEmail').value.trim();
-  const okContracts = collectContracts().every(c => CAIP2_RX.test(c.chainId) && EVM_ADDR_RX.test(c.address));
+  const contracts = collectContracts();
+  const okContracts = contracts.length > 0 && contracts.every(c => CAIP2_RX.test(c.chainId) && EVM_ADDR_RX.test(c.address));
+  const okUrls = REQUIRED_URL_FIELDS.every(id => isHttpUrl($(id).value));
+  const okCompliance = isPublicDomain($('registeredDomain').value.trim())
+    && EVM_ADDR_RX.test($('publicAddress').value.trim())
+    && ATTESTATION_FIELDS.every(field => $(`att-${field}`).checked);
 
-  const ok = okName && okAddr && okBasic && okContracts;
+  const ok = okName && okAddr && okBasic && okContracts && okUrls && okCompliance;
   $('fileBtn').disabled = !ok;
-  $('status').textContent = ok ? 'Ready to file.' : 'Fill required fields and fix any contract rows.';
+  $('status').textContent = ok ? 'Ready to file.' : 'Fill required fields, evidence URLs, attestations, and contract rows.';
+}
+
+function isHttpUrl(raw) {
+  try {
+    const u = new URL(String(raw || '').trim());
+    return (u.protocol === 'http:' || u.protocol === 'https:') && isPublicHostname(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isPublicDomain(raw) {
+  const host = String(raw || '').trim().toLowerCase();
+  if (host.includes('://') || host.includes('/')) return false;
+  const labels = host.split('.');
+  return labels.length >= 2
+    && labels.every(label => DOMAIN_LABEL_RX.test(label))
+    && TLD_RX.test(labels[labels.length - 1]);
+}
+
+function isPublicHostname(hostname) {
+  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!h || h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '::1') return false;
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!v4) return true;
+  const octets = v4.slice(1).map(Number);
+  if (octets.some(n => n < 0 || n > 255)) return false;
+  const [a, b] = octets;
+  return !(a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254));
 }
 
 /* ---------- contract rows ---------- */
@@ -44,11 +104,17 @@ function checkAll() {
 function addContractRow(prefill) {
   const row = document.createElement('div');
   row.className = 'grid grid-cols-[1fr_2fr_auto] gap-2 items-center';
-  row.innerHTML = `
-    <input class="c-chain rounded-md border border-slate-300 px-2 py-1.5 text-sm" placeholder="eip155:1">
-    <input class="c-addr  rounded-md border border-slate-300 px-2 py-1.5 text-sm font-mono" placeholder="0x...">
-    <button type="button" class="c-rm text-xs text-slate-500 hover:text-rose-600">remove</button>
-  `;
+  const chainInput = document.createElement('input');
+  chainInput.className = 'c-chain rounded-md border border-slate-300 px-2 py-1.5 text-sm';
+  chainInput.placeholder = 'eip155:1';
+  const addressInput = document.createElement('input');
+  addressInput.className = 'c-addr rounded-md border border-slate-300 px-2 py-1.5 text-sm font-mono';
+  addressInput.placeholder = '0x...';
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'c-rm text-xs text-slate-500 hover:text-rose-600';
+  removeButton.textContent = 'remove';
+  row.append(chainInput, addressInput, removeButton);
   if (prefill) {
     row.querySelector('.c-chain').value = prefill.chainId;
     row.querySelector('.c-addr').value  = prefill.address;
@@ -86,6 +152,22 @@ function authHeaders() {
   return key ? { 'Authorization': `Bearer ${key}` } : {};
 }
 
+function collectCompliance() {
+  return {
+    registeredDomain: $('registeredDomain').value.trim(),
+    publicAddress: $('publicAddress').value.trim(),
+    qaUrl: $('qaUrl').value.trim(),
+    communicationsUrl: $('communicationsUrl').value.trim(),
+    internalDisputeResolutionUrl: $('internalDisputeResolutionUrl').value.trim(),
+    thirdPartyDisputeResolutionUrl: $('thirdPartyDisputeResolutionUrl').value.trim(),
+    legalRepresentativeAuthorizationUrl: $('legalRepresentativeAuthorizationUrl').value.trim(),
+    lifecycleStatus: 'initial',
+    attestations: Object.fromEntries(
+      ATTESTATION_FIELDS.map(field => [field, $(`att-${field}`).checked]),
+    ),
+  };
+}
+
 /* ---------- submit ---------- */
 
 async function submit(e) {
@@ -102,6 +184,7 @@ async function submit(e) {
     sourceUrl:    $('sourceUrl').value.trim() || undefined,
     guiUrl:       $('guiUrl').value.trim() || undefined,
     contracts:    collectContracts(),
+    compliance:   collectCompliance(),
   };
 
   let res;
@@ -205,6 +288,9 @@ function renderResult({ registryId, dao, agent, meta, warnings }) {
         ? 'local pin only — public CID mismatch'
         : 'local pin';
   $('r-cid').textContent     = `${meta.governance.cid} (${pinLabel})`;
+  $('r-compliance').textContent = meta.compliance
+    ? `${meta.compliance.status}; legal status ${meta.compliance.legalStatus} (${meta.compliance.registeredDomain})`
+    : 'not recorded';
   renderAnchorCell(meta);
 
   $('r-agentName').textContent    = meta.agentName;
@@ -228,8 +314,16 @@ function renderResult({ registryId, dao, agent, meta, warnings }) {
 /* ---------- wiring ---------- */
 
 document.addEventListener('DOMContentLoaded', () => {
-  ['daoName','agentName','agentAddress','agentEmail','govUrl','sourceUrl','guiUrl']
-    .forEach(id => $(id).addEventListener('input', checkAll));
+  [
+    'daoName',
+    'agentName',
+    'agentAddress',
+    'agentEmail',
+    ...REQUIRED_URL_FIELDS,
+    'registeredDomain',
+    'publicAddress',
+  ].forEach(id => $(id).addEventListener('input', checkAll));
+  ATTESTATION_FIELDS.forEach(field => $(`att-${field}`).addEventListener('change', checkAll));
   $('addContract').addEventListener('click', () => addContractRow());
   $('form').addEventListener('submit', submit);
 

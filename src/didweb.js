@@ -68,6 +68,7 @@ export function buildDaoDocument(opts) {
     sourceUrl,
     guiUrl,
     contracts,              // [{ chainId, address }]
+    compliance,
     created,                // ISO string
     version,                // integer (1 for first)
   } = opts;
@@ -92,6 +93,23 @@ export function buildDaoDocument(opts) {
     chainId: c.chainId,
     address: c.address,
   }));
+
+  if (compliance) {
+    services.push({
+      id: `${id}#compliance`,
+      type: 'NHDAOComplianceChecklist',
+      serviceEndpoint: `https://${host}/api/records/${registryId}`,
+      status: compliance.status,
+      legalStatus: compliance.legalStatus,
+      statute: compliance.statute,
+      registeredDomain: compliance.registeredDomain,
+      publicAddress: compliance.publicAddress,
+      lifecycleStatus: compliance.lifecycleStatus,
+      evidence: compliance.evidence,
+      assurance: compliance.assurance,
+      attestations: compliance.attestations,
+    });
+  }
 
   services.push({
     id: `${id}#record`,

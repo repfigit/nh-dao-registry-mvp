@@ -74,6 +74,40 @@ async function getJson(url) {
   return { status: res.status, body: await res.json() };
 }
 
+function completeCompliance(overrides = {}) {
+  return {
+    govUrl: 'https://example.org/integration/bylaws.pdf',
+    sourceUrl: 'https://github.com/example/integration-dao',
+    guiUrl: 'https://app.example.org/integration',
+    contracts: [{ chainId: 'eip155:1', address: '0x' + '33'.repeat(20) }],
+    compliance: {
+      registeredDomain: 'integration.example.org',
+      publicAddress: '0x' + '44'.repeat(20),
+      qaUrl: 'https://example.org/integration/security-review.pdf',
+      communicationsUrl: 'https://forum.example.org/integration/contact',
+      internalDisputeResolutionUrl: 'https://example.org/integration/disputes/internal',
+      thirdPartyDisputeResolutionUrl: 'https://example.org/integration/disputes/third-party',
+      legalRepresentativeAuthorizationUrl: 'https://forum.example.org/integration/legal-rep-authorization',
+      lifecycleStatus: 'initial',
+      attestations: {
+        permissionlessBlockchain: true,
+        openSourceCode: true,
+        qaCompleted: true,
+        guiMonitoring: true,
+        bylawsPublic: true,
+        publicCommunications: true,
+        internalDisputeResolution: true,
+        thirdPartyDisputeResolution: true,
+        decentralizedNetwork: true,
+        decentralizedGovernance: true,
+        participantRules: true,
+        legalRepresentativeAuthorized: true,
+      },
+    },
+    ...overrides,
+  };
+}
+
 let hardhatProc;
 let serverHttp;
 let baseUrl;
@@ -182,6 +216,7 @@ describe('integration: real chain', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const r = await postJson(`${baseUrl}/api/file`, filing);
     assert.equal(r.status, 200);
@@ -221,6 +256,7 @@ describe('integration: real chain', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const r = await postJson(`${baseUrl}/api/file`, filing);
     assert.equal(r.status, 200);
@@ -245,6 +281,7 @@ describe('integration: real chain', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const f = await postJson(`${baseUrl}/api/file`, filing);
     assert.equal(f.status, 200);
@@ -275,6 +312,7 @@ describe('integration: real chain', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const a = await postJson(`${baseUrl}/api/file`, filing);
     const b = await postJson(`${baseUrl}/api/file`, filing);

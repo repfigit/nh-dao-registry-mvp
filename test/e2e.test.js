@@ -92,6 +92,40 @@ async function getJson(url) {
   return { status: res.status, body: await res.json() };
 }
 
+function completeCompliance(overrides = {}) {
+  return {
+    govUrl: 'https://example.org/granite/bylaws.pdf',
+    sourceUrl: 'https://github.com/example/granite-dao',
+    guiUrl: 'https://app.example.org/granite',
+    contracts: [{ chainId: 'eip155:1', address: '0x' + '33'.repeat(20) }],
+    compliance: {
+      registeredDomain: 'granite.example.org',
+      publicAddress: '0x' + '44'.repeat(20),
+      qaUrl: 'https://example.org/granite/security-review.pdf',
+      communicationsUrl: 'https://forum.example.org/granite/contact',
+      internalDisputeResolutionUrl: 'https://example.org/granite/disputes/internal',
+      thirdPartyDisputeResolutionUrl: 'https://example.org/granite/disputes/third-party',
+      legalRepresentativeAuthorizationUrl: 'https://forum.example.org/granite/legal-rep-authorization',
+      lifecycleStatus: 'initial',
+      attestations: {
+        permissionlessBlockchain: true,
+        openSourceCode: true,
+        qaCompleted: true,
+        guiMonitoring: true,
+        bylawsPublic: true,
+        publicCommunications: true,
+        internalDisputeResolution: true,
+        thirdPartyDisputeResolution: true,
+        decentralizedNetwork: true,
+        decentralizedGovernance: true,
+        participantRules: true,
+        legalRepresentativeAuthorized: true,
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe('NH DAO Registry MVP, end-to-end', () => {
   before(async () => { await startServer(); });
   after(async () => { await stopServer(); });
@@ -125,6 +159,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
       contracts: [
         { chainId: 'eip155:1',   address: '0x' + '11'.repeat(20) },
         { chainId: 'eip155:137', address: '0x' + '22'.repeat(20) },
@@ -171,6 +206,18 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     // meta has the recorded hashes.
     assert.match(meta.daoHash,   /^sha256:[a-f0-9]{64}$/);
     assert.match(meta.agentHash, /^sha256:[a-f0-9]{64}$/);
+    assert.equal(meta.compliance.status, 'evidence-submitted');
+    assert.equal(meta.compliance.legalStatus, 'not-determined');
+    assert.equal(meta.compliance.registeredDomain, 'granite.example.org');
+    assert.equal(meta.compliance.evidence.qaUrl, 'https://example.org/granite/security-review.pdf');
+    assert.equal(meta.compliance.assurance.status, 'submitted-not-verified');
+    assert.ok(meta.compliance.assurance.evidenceUrlCount >= 8);
+
+    const complianceSvc = dao.service.find(s => s.type === 'NHDAOComplianceChecklist');
+    assert.ok(complianceSvc, 'DAO DID should include NHDAOComplianceChecklist service');
+    assert.equal(complianceSvc.status, 'evidence-submitted');
+    assert.equal(complianceSvc.legalStatus, 'not-determined');
+    assert.equal(complianceSvc.evidence.communicationsUrl, 'https://forum.example.org/granite/contact');
 
     // Verifier: signatures + alsoKnownAs + IPFS hash all pass.
     const ver = await getJson(`${baseUrl}/api/verify/${registryId}`);
@@ -199,6 +246,93 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(meta.status, 'anchor-disabled', `unexpected status: ${meta.status}`);
   });
 
+  it('rejects filings missing RSA 301-B compliance evidence', async () => {
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Incomplete Compliance DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+    });
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'sourceUrl'));
+    assert.ok(r.body.details.some(d => d.field === 'contracts'));
+    assert.ok(r.body.details.some(d => d.field === 'compliance.registeredDomain'));
+    assert.ok(r.body.details.some(d => d.field === 'compliance.attestations.decentralizedGovernance'));
+  });
+
+  it('rejects invalid compliance evidence URLs', async () => {
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Invalid Compliance DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance({
+        compliance: {
+          ...completeCompliance().compliance,
+          qaUrl: 'javascript:alert(1)',
+        },
+      }),
+    });
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'compliance.qaUrl'));
+  });
+
+  it('rejects invalid registered domains in compliance evidence', async () => {
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Bad Domain DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance({
+        compliance: {
+          ...completeCompliance().compliance,
+          registeredDomain: 'foo-.example.org',
+        },
+      }),
+    });
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'compliance.registeredDomain'));
+  });
+
+  it('rejects non-public compliance evidence URLs', async () => {
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Private Evidence DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance({
+        compliance: {
+          ...completeCompliance().compliance,
+          communicationsUrl: 'http://localhost:3000/contact',
+        },
+      }),
+    });
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'compliance.communicationsUrl'));
+  });
+
+  it('rejects false attestations and unsupported lifecycle status', async () => {
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'False Attestation DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance({
+        compliance: {
+          ...completeCompliance().compliance,
+          lifecycleStatus: 'unknown',
+          attestations: {
+            ...completeCompliance().compliance.attestations,
+            decentralizedNetwork: false,
+          },
+        },
+      }),
+    });
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'compliance.lifecycleStatus'));
+    assert.ok(r.body.details.some(d => d.field === 'compliance.attestations.decentralizedNetwork'));
+  });
+
   it('lists records via /api/records and shows the filing', async () => {
     const r = await getJson(`${baseUrl}/api/records`);
     assert.equal(r.status, 200);
@@ -211,12 +345,25 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     for (const rec of r.body.records) assert.equal(rec.hasWarnings, false, JSON.stringify(rec));
   });
 
+  it('exposes health and readiness endpoints', async () => {
+    const health = await getJson(`${baseUrl}/healthz`);
+    assert.equal(health.status, 200);
+    assert.equal(health.body.status, 'ok');
+
+    const ready = await getJson(`${baseUrl}/readyz`);
+    assert.equal(ready.status, 200);
+    assert.equal(ready.body.status, 'ready');
+    assert.equal(ready.body.checks.storeWritable, true);
+    assert.equal(ready.body.checks.controllerKeyAvailable, true);
+  });
+
   it('rejects URLs with disallowed schemes (e.g. javascript:)', async () => {
     const r = await postJson(`${baseUrl}/api/file`, {
       daoName: 'Schema Test DAO',
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
       sourceUrl: 'javascript:alert(1)',
     });
     assert.equal(r.status, 400);
@@ -267,6 +414,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
         agentName: 'Jane Smith',
         agentAddress: '123 Main Street, Concord, NH 03301',
         agentEmail: 'jane@example.org',
+        ...completeCompliance(),
         governanceBytes: oversized,
       });
       assert.equal(r.status, 400);
@@ -283,6 +431,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const a = await postJson(`${baseUrl}/api/file`, filing);
     const b = await postJson(`${baseUrl}/api/file`, filing);
@@ -299,6 +448,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     });
     assert.equal(r.status, 200);
     assert.ok(Array.isArray(r.body.warnings));
@@ -447,6 +597,7 @@ describe('filing auth', () => {
         agentName: 'Jane Smith',
         agentAddress: '123 Main Street, Concord, NH 03301',
         agentEmail: 'jane@example.org',
+        ...completeCompliance(),
       }),
     });
     assert.equal(res.status, 200);
@@ -561,6 +712,7 @@ describe('CONTROLLER_PRIVATE_KEY env-var path', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     });
     assert.equal(r.status, 200);
 
@@ -691,6 +843,7 @@ describe('rate limiting', () => {
       agentName: 'Jane Smith',
       agentAddress: '123 Main Street, Concord, NH 03301',
       agentEmail: 'jane@example.org',
+      ...completeCompliance(),
     };
     const a = await postJson(`${baseUrlRl}/api/file`, body);
     const b = await postJson(`${baseUrlRl}/api/file`, body);
