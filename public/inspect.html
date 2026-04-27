@@ -34,6 +34,12 @@
     box-shadow:0 18px 45px rgba(8,59,115,.18);
   }
   .panel { background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 28px rgba(23,32,51,.08); }
+  .guide-card { background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 22px rgba(23,32,51,.06); }
+  .eyebrow { color:var(--nh-red); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
+  .step-num {
+    width:2rem; height:2rem; display:grid; place-items:center; flex:none;
+    background:var(--nh-blue); color:#fff; border-radius:4px; font-size:.8rem; font-weight:900;
+  }
   .chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.55rem; border-radius:4px; font-size:0.72rem; font-weight:800; }
   .chip-navy { background:#e8f1fb; color:var(--nh-blue); }
   .chip-teal { background:#e8f7f1; color:#1f7a54; }
@@ -80,6 +86,44 @@
         <p class="text-blue-50 mt-3 text-sm max-w-3xl">Review registered DAO records and run end-to-end verification checks.</p>
       </div>
       <a href="/" class="bg-white text-[#083b73] text-sm font-bold px-4 py-2 rounded-md">File a DAO</a>
+    </div>
+  </section>
+
+  <section class="guide-card mt-5 p-5 md:p-6">
+    <div class="eyebrow mb-2">How to read this page</div>
+    <h2 class="text-xl font-extrabold tracking-tight text-slate-900">Verification checks the whole path, not just the database</h2>
+    <p class="text-sm text-slate-600 mt-2 max-w-4xl">
+      Each row starts as a record saved by the API, but the important part is independent verification. Click <strong>Verify</strong> to make the app fetch the public DID documents, recompute hashes, check signatures, inspect the DAO-agent link, and compare against IPFS and the chain anchor when configured.
+    </p>
+    <div class="mt-5 grid md:grid-cols-4 gap-4">
+      <div class="flex gap-3">
+        <div class="step-num">1</div>
+        <div>
+          <div class="text-sm font-bold">Resolve</div>
+          <p class="text-xs text-slate-600 mt-1">Fetch DAO and agent DID documents over HTTPS.</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="step-num">2</div>
+        <div>
+          <div class="text-sm font-bold">Authenticate</div>
+          <p class="text-xs text-slate-600 mt-1">Confirm both documents were signed by the registry controller key.</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="step-num">3</div>
+        <div>
+          <div class="text-sm font-bold">Compare</div>
+          <p class="text-xs text-slate-600 mt-1">Recompute document and governance hashes from their contents.</p>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <div class="step-num">4</div>
+        <div>
+          <div class="text-sm font-bold">Report</div>
+          <p class="text-xs text-slate-600 mt-1">Show which trust checks passed and which need operator attention.</p>
+        </div>
+      </div>
     </div>
   </section>
 

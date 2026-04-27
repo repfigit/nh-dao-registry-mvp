@@ -58,6 +58,18 @@
     background:var(--panel); border:1px solid var(--line); border-radius:8px;
     box-shadow:0 10px 28px rgba(23,32,51,.08);
   }
+  .guide-card {
+    background:#fff; border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 8px 22px rgba(23,32,51,.06);
+  }
+  .step-num {
+    width:2rem; height:2rem; display:grid; place-items:center; flex:none;
+    background:var(--nh-blue); color:#fff; border-radius:4px; font-size:.8rem; font-weight:900;
+  }
+  .stack-label {
+    display:inline-flex; align-items:center; padding:.18rem .45rem; border-radius:4px;
+    background:#eef4fb; color:var(--nh-blue); font-size:.68rem; font-weight:800; letter-spacing:.04em;
+  }
   .section-title { color:var(--nh-blue); font-weight:800; letter-spacing:.01em; }
   label span.text-sm { color:#21364d; }
   input, select {
@@ -126,7 +138,78 @@
     </div>
   </section>
 
+  <section class="grid lg:grid-cols-[1.1fr_.9fr] gap-5 mt-5">
+    <div class="guide-card p-5 md:p-6">
+      <div class="eyebrow mb-2">Plain-language walkthrough</div>
+      <h2 class="text-xl font-extrabold tracking-tight text-slate-900">What this app does from screen to blockchain</h2>
+      <p class="text-sm text-slate-600 mt-2">
+        The registry is a working full-stack demonstration. The form collects public evidence, the server turns it into signed public identity documents, and the verifier checks each piece independently.
+      </p>
+      <div class="mt-5 grid gap-4">
+        <div class="flex gap-3">
+          <div class="step-num">1</div>
+          <div>
+            <div class="font-bold text-sm">Browser collects the filing</div>
+            <p class="text-xs text-slate-600 mt-1">The page checks obvious mistakes before submission, such as a missing DAO suffix, a PO box address, malformed URLs, or missing attestations.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="step-num">2</div>
+          <div>
+            <div class="font-bold text-sm">Server validates again</div>
+            <p class="text-xs text-slate-600 mt-1">The Express API repeats the rules on the backend. Client-side checks are helpful, but the server is the authority.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="step-num">3</div>
+          <div>
+            <div class="font-bold text-sm">Evidence becomes signed DID documents</div>
+            <p class="text-xs text-slate-600 mt-1">The app builds two linked <code>did:web</code> documents: one for the DAO and one for the registered agent. The registry signs both with its controller key.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="step-num">4</div>
+          <div>
+            <div class="font-bold text-sm">Files and hashes make the record verifiable</div>
+            <p class="text-xs text-slate-600 mt-1">Governance bytes are content-addressed with IPFS. The canonical hash of each DID document can be anchored on Polygon Amoy when chain settings are configured.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-card p-5 md:p-6">
+      <div class="eyebrow mb-2">Full-stack map</div>
+      <div class="space-y-3">
+        <div>
+          <span class="stack-label">Frontend</span>
+          <p class="text-xs text-slate-600 mt-1">Static HTML and JavaScript in <code>public/</code> render the form and inspector.</p>
+        </div>
+        <div>
+          <span class="stack-label">API</span>
+          <p class="text-xs text-slate-600 mt-1"><code>POST /api/file</code> publishes records. <code>GET /api/verify/:id</code> checks them.</p>
+        </div>
+        <div>
+          <span class="stack-label">Storage</span>
+          <p class="text-xs text-slate-600 mt-1">The MVP stores records and local IPFS blobs on the Fly volume mounted at <code>/app/data</code>.</p>
+        </div>
+        <div>
+          <span class="stack-label">Identity</span>
+          <p class="text-xs text-slate-600 mt-1">DID documents are served from normal HTTPS URLs so anyone can resolve them from the DID alone.</p>
+        </div>
+        <div>
+          <span class="stack-label">Verification</span>
+          <p class="text-xs text-slate-600 mt-1">The verifier does not trust the UI. It re-resolves documents, checks signatures, links, IPFS hashes, and chain anchors.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel mt-5 p-5 md:p-6">
+    <div class="mb-5 border-b border-slate-200 pb-4">
+      <div class="eyebrow mb-1">Step 1</div>
+      <h2 class="text-xl font-extrabold tracking-tight text-slate-900">Enter public filing evidence</h2>
+      <p class="text-sm text-slate-600 mt-1">Use the form below as the intake screen. Every required field either becomes part of the signed record or supports the registry's evidence checklist.</p>
+    </div>
     <details id="apiKeySection" class="mb-4 rounded-md border border-slate-300 bg-[#f6f8fb]">
       <summary class="cursor-pointer text-xs font-bold px-3 py-2 select-none text-[#083b73]">
         API key (only required if <code>FILING_API_KEY</code> is set on the server)

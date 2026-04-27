@@ -30,6 +30,35 @@ For every filing, the registry does the following:
    signature, the chain anchor, the IPFS hash, and the bidirectional link
    to the agent.
 
+## Learning walkthrough
+
+This MVP is also meant to teach the full stack to a non-specialist reviewer:
+
+- The browser UI in `public/` is the intake counter. It helps the user catch
+  obvious input mistakes before submission.
+- The Express API in `src/server.js` is the service desk. It receives filings,
+  serves DID documents, lists records, and exposes verification reports.
+- `src/validation.js` and `src/compliance.js` are the rule checkers. They
+  repeat the important checks on the server, where users cannot bypass them.
+- `src/publication.js` is the publishing line. It pins governance bytes, builds
+  the DAO and registered-agent DID documents, signs them, saves them, and
+  attempts chain anchoring.
+- `src/store.js` is the MVP record cabinet. In this reference deployment it is
+  a filesystem under `data/`; a hardened deployment would replace this with a
+  database/object store.
+- `src/ipfs.js` creates content-addressed governance bytes. Even when public
+  pinning is not configured, the CID and local blob let the verifier prove the
+  bytes have not changed.
+- `contracts/DAORegistryAnchor.sol` is the public notary. It records a hash of
+  each DID document version on Polygon Amoy.
+- `src/verifier.js` is the independent auditor. It resolves the public DID
+  URLs, verifies signatures, checks DAO-agent links, recomputes hashes, and
+  compares them with IPFS and the chain anchor.
+
+In short: the UI collects evidence, the API publishes signed records, storage
+keeps the artifacts, IPFS/chain provide public integrity signals, and the
+verifier shows whether the pieces still agree.
+
 ```
                                 Polygon Amoy
                                      ▲
