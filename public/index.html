@@ -226,44 +226,58 @@
     </details>
 
     <form id="form" class="space-y-4">
-      <div class="grid md:grid-cols-2 gap-4">
-        <label class="block">
-          <span class="text-sm font-medium">DAO name</span>
-          <input id="daoName" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Granite State Governance DAO">
-          <p id="daoName-note" class="mt-1 text-xs text-slate-500">Must end in <code>DAO</code> or <code>LAO</code> (RSA 301-B:2, III).</p>
-        </label>
-        <label class="block">
-          <span class="text-sm font-medium">Registered agent (natural person or entity)</span>
-          <input id="agentName" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Jane Smith">
-          <p class="mt-1 text-xs text-slate-500">Receives legal service for the DAO.</p>
-        </label>
+      <div>
+        <h3 class="text-sm section-title">DAO identity</h3>
+        <p class="text-xs text-slate-500 mt-1">Start with the public DAO name and the public artifacts that explain how it operates.</p>
+        <div class="mt-3 grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm font-medium">DAO name</span>
+            <input id="daoName" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Granite State Governance DAO">
+            <p id="daoName-note" class="mt-1 text-xs text-slate-500">Must end in <code>DAO</code> or <code>LAO</code> (RSA 301-B:2, III).</p>
+          </label>
 
-        <label class="block md:col-span-2">
-          <span class="text-sm font-medium">Agent's NH physical street address</span>
-          <input id="agentAddress" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="123 Main Street, Concord, NH 03301">
-          <p id="agentAddress-note" class="mt-1 text-xs text-slate-500">PO boxes are not accepted.</p>
-        </label>
+          <label class="block">
+            <span class="text-sm font-medium">Governance / bylaws document URL</span>
+            <input id="govUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
+            <p class="mt-1 text-xs text-slate-500">Even if you supply a URL, the registry pins a public copy and lists IPFS first.</p>
+          </label>
 
-        <label class="block">
-          <span class="text-sm font-medium">Agent email</span>
-          <input id="agentEmail" type="email" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="agent@example.org">
-        </label>
+          <label class="block">
+            <span class="text-sm font-medium">Source code URL</span>
+            <input id="sourceUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://github.com/example/dao-contracts">
+          </label>
 
-        <label class="block">
-          <span class="text-sm font-medium">Governance / bylaws document URL</span>
-          <input id="govUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
-          <p class="mt-1 text-xs text-slate-500">Even if you supply a URL, the registry pins a public copy and lists IPFS first.</p>
-        </label>
+          <label class="block">
+            <span class="text-sm font-medium">DAO user interface URL</span>
+            <input id="guiUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://app.example.org">
+          </label>
+        </div>
+      </div>
 
-        <label class="block">
-          <span class="text-sm font-medium">Source code URL</span>
-          <input id="sourceUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://github.com/example/dao-contracts">
-        </label>
+      <div class="divider"></div>
 
-        <label class="block md:col-span-2">
-          <span class="text-sm font-medium">DAO user interface URL</span>
-          <input id="guiUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://app.example.org">
-        </label>
+      <div class="rounded-md border border-slate-300 bg-[#f6f8fb] p-4">
+        <h3 class="text-sm section-title">Registered agent</h3>
+        <p class="text-xs text-slate-500 mt-1">This person or entity is the official contact for legal service. The address must be a physical New Hampshire street address.</p>
+        <div class="mt-3 grid md:grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm font-medium">Agent name</span>
+            <input id="agentName" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="Jane Smith">
+            <p class="mt-1 text-xs text-slate-500">Natural person or entity acting as registered agent.</p>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-medium">Agent email</span>
+            <input id="agentEmail" type="email" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="agent@example.org">
+            <p class="mt-1 text-xs text-slate-500">Used as contact metadata in the agent DID document.</p>
+          </label>
+
+          <label class="block md:col-span-2">
+            <span class="text-sm font-medium">NH physical street address</span>
+            <input id="agentAddress" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white" placeholder="123 Main Street, Concord, NH 03301">
+            <p id="agentAddress-note" class="mt-1 text-xs text-slate-500">PO boxes are not accepted.</p>
+          </label>
+        </div>
       </div>
 
       <div class="divider"></div>
