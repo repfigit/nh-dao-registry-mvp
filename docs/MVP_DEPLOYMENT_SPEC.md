@@ -10,7 +10,7 @@ Deploy the committed MVP as a working public reference service with:
 - HTTPS `did:web` hosting.
 - Persistent record and blob storage.
 - Polygon Amoy anchor configuration.
-- Optional web3.storage public IPFS pinning.
+- Optional Storacha public IPFS pinning.
 - Filing API authentication.
 - CI checks before deploy.
 - Basic backup and recovery.
@@ -83,7 +83,7 @@ The simplest supported MVP target is:
 - One persistent encrypted volume mounted at `./data`.
 - Reverse proxy or platform-managed HTTPS in front of port `3000`.
 - Outbound HTTPS access to the configured Polygon Amoy RPC provider.
-- Optional outbound HTTPS access to web3.storage.
+- Optional outbound HTTPS access to Storacha.
 
 Suitable first targets include a small VM, a single ECS service with EFS, Fly.io/Render/Railway-like persistent disk hosting, or a container on a managed PaaS that supports durable mounted storage.
 

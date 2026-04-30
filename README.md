@@ -65,7 +65,7 @@ verifier shows whether the pieces still agree.
                                      │ anchor(registryId, kind, version, sha256)
                                      │
    ┌─────────────┐  POST /api/file   │              ┌─────────────┐
-   │  Filing UI  │ ─────────────────►│ Publication  │ ────► IPFS   │ web3.storage
+   │  Filing UI  │ ─────────────────►│ Publication  │ ────► IPFS   │ Storacha
    │ public/     │                   │ orchestrator │       (pin)  │ + local pin
    └─────────────┘                   └──────┬───────┘              └─────────────┘
                                             │ saveRecord
@@ -88,7 +88,7 @@ verifier shows whether the pieces still agree.
 - Node.js 20 or newer (for native `fetch`, `--watch`, `node:test`).
 - A Polygon Amoy test account with a small amount of test MATIC. Get free
   test MATIC at https://faucet.polygon.technology.
-- (Optional) A web3.storage account for public IPFS pinning. Without it,
+- (Optional) A Storacha account for public IPFS pinning. Without it,
   the registry computes a real CIDv1 and pins to a local blob store.
 
 ## Quick start
@@ -213,7 +213,7 @@ This is a reference. Before production, harden these:
 - The contract `owner` is the deployer's EOA. The contract supports a
   two-step `transferOwnership` / `acceptOwnership` flow; production should
   use it to hand ownership to a multisig (Gnosis Safe) plus a timelock.
-- IPFS pinning falls back to local storage when web3.storage is not
+- IPFS pinning falls back to local storage when Storacha is not
   configured. The publication API surfaces `publicPinStatus` and a
   top-level `warnings` array so an operator can detect a fall-back; before
   production, add at least one redundant public pin, ideally with a

@@ -29,7 +29,7 @@
     "multiformats": "^13.1.0"
   },
   "optionalDependencies": {
-    "@web3-storage/w3up-client": "^16.0.0"
+    "@storacha/client": "^2.1.3"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
