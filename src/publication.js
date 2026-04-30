@@ -183,6 +183,15 @@ export async function file(input, ctx) {
   const anchors      = { dao: null, agent: null };
   const anchorErrors = { dao: null, agent: null };
   const initialStatus = anchorEnabled() ? 'pending' : 'anchor-disabled';
+  const admin = {
+    reviewStatus: 'submitted',
+    submittedAt: created,
+    reviewedAt: null,
+    reviewedBy: null,
+    decisionReason: null,
+    correctionRequestedAt: null,
+    notesCount: 0,
+  };
   const buildMeta = () => ({
     registryId,
     daoDid: daoDidStr,
@@ -190,6 +199,8 @@ export async function file(input, ctx) {
     filed: created,
     daoName: filing.daoName,
     agentName: filing.agentName,
+    agentEmail: filing.agentEmail,
+    agentAddress: filing.agentAddress,
     governance: {
       cid: pinned.cid,
       ipfsUri: pinned.ipfsUri,
@@ -206,6 +217,7 @@ export async function file(input, ctx) {
     agentHash: `sha256:${agentHash}`,
     version: INITIAL_VERSION,
     status: deriveStatus(),
+    admin,
     warnings: buildWarnings(),
   });
 

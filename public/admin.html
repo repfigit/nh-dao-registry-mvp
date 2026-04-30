@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NH DAO Registry, admin review</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --nh-blue:#083b73;
+    --nh-red:#b21f2d;
+    --ink:#172033;
+    --paper:#f3f6fa;
+    --line:#d7dee8;
+  }
+  body {
+    background:linear-gradient(180deg,#eef4fb 0,#f7f9fc 300px,#f3f6fa 100%);
+    color:var(--ink);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .top-rule { height:6px; background:linear-gradient(90deg,var(--nh-blue),var(--nh-red)); }
+  .gov-shell { max-width:1280px; margin:0 auto; padding:0 1rem; }
+  .gov-header { background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); box-shadow:0 10px 30px rgba(8,59,115,.08); }
+  .brand-mark {
+    width:42px; height:42px; display:grid; place-items:center; border:2px solid var(--nh-blue);
+    color:var(--nh-blue); font-weight:800; letter-spacing:-.04em; background:#fff; border-radius:4px;
+  }
+  .eyebrow { color:var(--nh-red); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.72rem; }
+  .nav-link { color:#24435f; font-size:.82rem; font-weight:700; text-decoration:none; }
+  .nav-link:hover { color:var(--nh-red); }
+  .hero-band {
+    border:1px solid #cdd8e5; color:#fff; border-radius:8px;
+    background:linear-gradient(135deg,rgba(8,59,115,.96),rgba(10,82,145,.92));
+    box-shadow:0 18px 45px rgba(8,59,115,.18);
+  }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 28px rgba(23,32,51,.08); }
+  .section-title { color:var(--nh-blue); font-weight:800; letter-spacing:.01em; }
+  .chip { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .55rem; border-radius:4px; font-size:.72rem; font-weight:800; }
+  .chip-submitted { background:#e8f1fb; color:var(--nh-blue); }
+  .chip-under_review { background:#fef3c7; color:#92400e; }
+  .chip-needs_correction { background:#fff0f2; color:var(--nh-red); }
+  .chip-approved { background:#e8f7f1; color:#166534; }
+  .chip-denied, .chip-revoked { background:#fee2e2; color:#991b1b; }
+  .chip-withdrawn { background:#f1f5f9; color:#475569; }
+  .dark-btn { background:var(--nh-blue); color:#fff; border-radius:6px; }
+  .dark-btn:hover { background:#062f5c; }
+  .primary-btn { background:var(--nh-red); color:#fff; border-radius:6px; }
+  .primary-btn:hover { background:#931925; }
+  .light-btn { background:#fff; color:var(--nh-blue); border:1px solid #b9c5d2; border-radius:6px; }
+  .light-btn:hover { border-color:var(--nh-blue); }
+  input, select, textarea {
+    border-color:#b9c5d2 !important; border-radius:6px !important;
+    box-shadow:inset 0 1px 2px rgba(23,32,51,.04);
+  }
+  textarea { min-height:5rem; }
+  pre.json { background:#111827; color:#e2e8f0; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; line-height:1.45; padding:.75rem; border-radius:6px; max-height:300px; overflow:auto; }
+  tbody tr:hover { background:#f8fafc; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="top-rule"></div>
+<header class="gov-header">
+  <div class="gov-shell py-4">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center gap-3">
+        <div class="brand-mark">NH</div>
+        <div>
+          <div class="eyebrow">New Hampshire Secretary of State</div>
+          <div class="text-xl font-extrabold tracking-tight text-slate-900">DAO Registry Admin</div>
+          <div class="text-xs text-slate-500">Corporation Division review workflow prototype</div>
+        </div>
+      </div>
+      <nav class="flex items-center gap-4">
+        <a href="/" class="nav-link">File</a>
+        <a href="/inspect" class="nav-link">Inspect</a>
+        <a href="/admin" class="nav-link">Admin</a>
+        <a href="/.well-known/did.json" class="nav-link">Registry DID</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main class="gov-shell pb-16">
+  <section class="hero-band mt-6 p-6 md:p-8">
+    <div class="flex items-end justify-between flex-wrap gap-4">
+      <div>
+        <span class="chip bg-white text-[#083b73] mb-4">review console</span>
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">Secretary of State review queue</h1>
+        <p class="text-blue-50 mt-3 text-sm max-w-3xl">Separate administrative decisions from technical anchoring, signatures, and public verification status.</p>
+      </div>
+      <button id="refresh" class="bg-white text-[#083b73] text-sm font-bold px-4 py-2 rounded-md">Refresh</button>
+    </div>
+  </section>
+
+  <section class="panel mt-5 p-5">
+    <div class="grid md:grid-cols-[1fr_220px_160px] gap-3 items-end">
+      <label class="block">
+        <span class="text-xs font-bold text-slate-600">Admin bearer token</span>
+        <input id="token" type="password" autocomplete="off" class="mt-1 w-full border px-3 py-2 text-sm font-mono" placeholder="required for admin API">
+      </label>
+      <label class="block">
+        <span class="text-xs font-bold text-slate-600">Queue</span>
+        <select id="statusFilter" class="mt-1 w-full border px-3 py-2 text-sm bg-white">
+          <option value="">All statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="under_review">Under review</option>
+          <option value="needs_correction">Needs correction</option>
+          <option value="approved">Approved</option>
+          <option value="denied">Denied</option>
+          <option value="withdrawn">Withdrawn</option>
+          <option value="revoked">Revoked</option>
+        </select>
+      </label>
+      <button id="load" class="dark-btn text-sm font-bold px-4 py-2.5">Load queue</button>
+    </div>
+    <div id="message" class="mt-3 text-xs text-slate-600"></div>
+  </section>
+
+  <section class="grid lg:grid-cols-[.92fr_1.08fr] gap-5 mt-5">
+    <div class="panel overflow-hidden">
+      <div class="p-4 border-b border-slate-200">
+        <h2 class="section-title text-sm">Filings</h2>
+      </div>
+      <div class="overflow-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-xs text-slate-600">
+            <tr>
+              <th class="px-4 py-3">DAO</th>
+              <th class="px-4 py-3">Review</th>
+              <th class="px-4 py-3">Anchor</th>
+              <th class="px-4 py-3">Filed</th>
+            </tr>
+          </thead>
+          <tbody id="rows" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel p-5">
+      <div id="detailEmpty" class="text-sm text-slate-500">Select a filing to review.</div>
+      <div id="detail" class="hidden">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div class="eyebrow mb-1">Filing detail</div>
+            <h2 id="daoName" class="text-xl font-extrabold tracking-tight text-slate-900"></h2>
+            <div id="registryId" class="text-xs text-slate-500 font-mono break-all mt-1"></div>
+          </div>
+          <span id="reviewChip" class="chip"></span>
+        </div>
+
+        <div class="mt-4 grid md:grid-cols-2 gap-3 text-xs">
+          <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div class="font-bold text-slate-700">Registered agent</div>
+            <div id="agentName" class="mt-1"></div>
+            <div id="agentContact" class="text-slate-600 break-all"></div>
+          </div>
+          <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div class="font-bold text-slate-700">Technical status</div>
+            <div id="anchorStatus" class="mt-1"></div>
+            <div id="filedAt" class="text-slate-600"></div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <h3 class="section-title text-sm">Evidence</h3>
+          <dl id="evidence" class="mt-2 grid md:grid-cols-2 gap-2 text-xs"></dl>
+        </div>
+
+        <div class="mt-4 rounded-md border border-slate-200 p-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h3 class="section-title text-sm">Verification</h3>
+            <button id="verify" class="light-btn text-xs font-bold px-3 py-1.5">Run verification</button>
+          </div>
+          <div id="verifyResult" class="mt-2 text-xs text-slate-600"></div>
+        </div>
+
+        <div class="mt-4 rounded-md border border-slate-200 p-3">
+          <h3 class="section-title text-sm">Decision</h3>
+          <div class="mt-3 grid md:grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs font-bold text-slate-600">Reviewer</span>
+              <input id="reviewer" class="mt-1 w-full border px-3 py-2 text-sm" placeholder="reviewer name">
+            </label>
+            <label class="block">
+              <span class="text-xs font-bold text-slate-600">Reason</span>
+              <input id="reason" class="mt-1 w-full border px-3 py-2 text-sm" placeholder="public decision reason">
+            </label>
+            <label class="block md:col-span-2">
+              <span class="text-xs font-bold text-slate-600">Internal note</span>
+              <textarea id="note" class="mt-1 w-full border px-3 py-2 text-sm" placeholder="optional review note"></textarea>
+            </label>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-action="review" class="light-btn text-xs font-bold px-3 py-1.5">Mark under review</button>
+            <button data-action="request-correction" class="light-btn text-xs font-bold px-3 py-1.5">Request correction</button>
+            <button data-action="approve" class="dark-btn text-xs font-bold px-3 py-1.5">Approve</button>
+            <button data-action="deny" class="primary-btn text-xs font-bold px-3 py-1.5">Deny</button>
+            <button data-action="revoke" class="light-btn text-xs font-bold px-3 py-1.5">Revoke</button>
+          </div>
+        </div>
+
+        <details class="mt-4">
+          <summary class="text-sm font-bold">Audit history</summary>
+          <ul id="audit" class="mt-2 text-xs space-y-2"></ul>
+        </details>
+
+        <details class="mt-4">
+          <summary class="text-sm font-bold">Signed DAO document</summary>
+          <pre id="daoDoc" class="json mt-2"></pre>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let selectedId = null;
+
+function token() {
+  return $('token').value.trim();
+}
+
+function headers() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token()}`,
+  };
+}
+
+function showMessage(text, tone = 'muted') {
+  const el = $('message');
+  el.className = `mt-3 text-xs ${tone === 'error' ? 'text-rose-700' : 'text-slate-600'}`;
+  el.textContent = text;
+}
+
+function labelStatus(status) {
+  return String(status || 'submitted').replace(/_/g, ' ');
+}
+
+function statusChip(status) {
+  const span = document.createElement('span');
+  span.className = `chip chip-${status || 'submitted'}`;
+  span.textContent = labelStatus(status);
+  return span;
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: { ...headers(), ...(options.headers || {}) },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+async function loadQueue() {
+  if (!token()) { showMessage('Enter the admin bearer token.', 'error'); return; }
+  sessionStorage.setItem('nhdao.adminToken', token());
+  const filter = $('statusFilter').value;
+  const query = filter ? `?status=${encodeURIComponent(filter)}` : '';
+  const { records } = await api(`/api/admin/records${query}`);
+  const rows = $('rows');
+  rows.replaceChildren();
+  if (records.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.className = 'px-4 py-6 text-center text-slate-500';
+    td.colSpan = 4;
+    td.textContent = 'No filings in this queue.';
+    tr.appendChild(td);
+    rows.appendChild(tr);
+  }
+  for (const r of records) {
+    const tr = document.createElement('tr');
+    tr.className = 'cursor-pointer';
+    tr.addEventListener('click', () => loadDetail(r.registryId));
+
+    const name = document.createElement('td');
+    name.className = 'px-4 py-3';
+    const title = document.createElement('div');
+    title.className = 'font-bold text-slate-900';
+    title.textContent = r.daoName;
+    const id = document.createElement('div');
+    id.className = 'text-xs text-slate-500 font-mono break-all';
+    id.textContent = r.registryId;
+    name.append(title, id);
+
+    const review = document.createElement('td');
+    review.className = 'px-4 py-3';
+    review.appendChild(statusChip(r.reviewStatus));
+
+    const anchor = document.createElement('td');
+    anchor.className = 'px-4 py-3 text-xs text-slate-600';
+    anchor.textContent = r.anchorStatus;
+
+    const filed = document.createElement('td');
+    filed.className = 'px-4 py-3 text-xs text-slate-600';
+    filed.textContent = r.filed || '';
+
+    tr.append(name, review, anchor, filed);
+    rows.appendChild(tr);
+  }
+  showMessage(`Loaded ${records.length} filing${records.length === 1 ? '' : 's'}.`);
+}
+
+function evidenceRow(label, value) {
+  const wrap = document.createElement('div');
+  wrap.className = 'rounded-md border border-slate-200 bg-slate-50 p-3';
+  const dt = document.createElement('dt');
+  dt.className = 'font-bold text-slate-700';
+  dt.textContent = label;
+  const dd = document.createElement('dd');
+  dd.className = 'mt-1 text-slate-600 break-all';
+  dd.textContent = value || 'not supplied';
+  wrap.append(dt, dd);
+  return wrap;
+}
+
+function renderAudit(events) {
+  const list = $('audit');
+  list.replaceChildren();
+  if (!events || events.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'text-slate-500';
+    li.textContent = 'No admin actions yet.';
+    list.appendChild(li);
+    return;
+  }
+  for (const ev of events.slice().reverse()) {
+    const li = document.createElement('li');
+    li.className = 'rounded-md border border-slate-200 bg-slate-50 p-3';
+    const head = document.createElement('div');
+    head.className = 'font-bold text-slate-800';
+    head.textContent = `${labelStatus(ev.fromStatus)} -> ${labelStatus(ev.toStatus)} by ${ev.reviewer}`;
+    const detail = document.createElement('div');
+    detail.className = 'text-slate-600 mt-1';
+    detail.textContent = [ev.at, ev.reason, ev.note].filter(Boolean).join(' | ');
+    li.append(head, detail);
+    list.appendChild(li);
+  }
+}
+
+async function loadDetail(registryId) {
+  selectedId = registryId;
+  const full = await api(`/api/admin/records/${registryId}`);
+  const { meta, dao, audit } = full;
+  $('detailEmpty').classList.add('hidden');
+  $('detail').classList.remove('hidden');
+
+  $('daoName').textContent = meta.daoName;
+  $('registryId').textContent = meta.registryId;
+  $('agentName').textContent = meta.agentName;
+  const agentAddress = meta.agentAddress || agent.registeredAgent?.physicalAddress?.raw || '';
+  const agentEmail = meta.agentEmail || agent.registeredAgent?.email || '';
+  $('agentContact').textContent = [agentEmail, agentAddress].filter(Boolean).join(' | ');
+  $('anchorStatus').textContent = `Anchor status: ${meta.status}`;
+  $('filedAt').textContent = `Filed: ${meta.filed}`;
+  $('daoDoc').textContent = JSON.stringify(dao, null, 2);
+
+  const chip = statusChip(meta.admin.reviewStatus);
+  $('reviewChip').replaceWith(chip);
+  chip.id = 'reviewChip';
+
+  const evidence = $('evidence');
+  evidence.replaceChildren();
+  evidence.append(
+    evidenceRow('Registered domain', meta.compliance?.registeredDomain),
+    evidenceRow('DAO public address', meta.compliance?.publicAddress),
+    evidenceRow('QA evidence', meta.compliance?.evidence?.qaUrl),
+    evidenceRow('Communications', meta.compliance?.evidence?.communicationsUrl),
+    evidenceRow('Internal disputes', meta.compliance?.evidence?.internalDisputeResolutionUrl),
+    evidenceRow('Third-party disputes', meta.compliance?.evidence?.thirdPartyDisputeResolutionUrl),
+    evidenceRow('Legal representative authority', meta.compliance?.evidence?.legalRepresentativeAuthorizationUrl),
+    evidenceRow('Governance CID', meta.governance?.cid)
+  );
+
+  renderAudit(audit);
+  $('verifyResult').textContent = '';
+}
+
+async function runAction(action) {
+  if (!selectedId) return;
+  await api(`/api/admin/records/${selectedId}/${action}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      reviewer: $('reviewer').value,
+      reason: $('reason').value,
+      note: $('note').value,
+    }),
+  });
+  $('note').value = '';
+  await loadDetail(selectedId);
+  await loadQueue();
+}
+
+async function runVerify() {
+  if (!selectedId) return;
+  $('verifyResult').textContent = 'Verifying...';
+  const report = await fetch(`/api/verify/${selectedId}`).then(r => r.json());
+  const failed = (report.checks || []).filter(c => !c.ok);
+  $('verifyResult').textContent = report.ok
+    ? 'All verification checks passed.'
+    : `${failed.length} verification check${failed.length === 1 ? '' : 's'} failed: ${failed.map(f => f.name).join(', ')}`;
+}
+
+$('token').value = sessionStorage.getItem('nhdao.adminToken') || '';
+$('load').addEventListener('click', () => loadQueue().catch(e => showMessage(e.message, 'error')));
+$('refresh').addEventListener('click', () => loadQueue().catch(e => showMessage(e.message, 'error')));
+$('statusFilter').addEventListener('change', () => loadQueue().catch(e => showMessage(e.message, 'error')));
+$('verify').addEventListener('click', () => runVerify().catch(e => { $('verifyResult').textContent = e.message; }));
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => runAction(btn.dataset.action).catch(e => showMessage(e.message, 'error')));
+});
+if ($('token').value) loadQueue().catch(e => showMessage(e.message, 'error'));
+</script>
+</body>
+</html>

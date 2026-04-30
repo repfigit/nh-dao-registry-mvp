@@ -111,6 +111,7 @@
       <nav class="flex items-center gap-4">
         <a href="/" class="nav-link">File</a>
         <a href="/inspect" class="nav-link">Inspect</a>
+        <a href="/admin" class="nav-link">Admin</a>
         <a href="/.well-known/did.json" class="nav-link">Registry DID</a>
       </nav>
     </div>
@@ -186,7 +187,7 @@
         </div>
         <div>
           <span class="stack-label">API</span>
-          <p class="text-xs text-slate-600 mt-1"><code>POST /api/file</code> publishes records. <code>GET /api/verify/:id</code> checks them.</p>
+          <p class="text-xs text-slate-600 mt-1"><code>POST /api/file</code> publishes records. Admin review decisions use protected <code>/api/admin</code> routes.</p>
         </div>
         <div>
           <span class="stack-label">Storage</span>

@@ -47,11 +47,17 @@ before(async () => {
   // so the rate limiter is not exercised here. (It has its own test below.)
   process.env.FILING_RATE_MAX = '1000';
   process.env.VERIFY_RATE_MAX = '1000';
+  process.env.ADMIN_API_KEY = 'test-admin-token';
+  process.env.AMOY_RPC_URL = '';
+  process.env.RPC_URL = '';
+  process.env.ANCHOR_CONTRACT_ADDRESS = '';
+  process.env.ANCHOR_PRIVATE_KEY = '';
 
   // Clear any prior test artifacts.
   fs.rmSync(TMP, { recursive: true, force: true });
   fs.rmSync(path.join('data', 'records'), { recursive: true, force: true });
   fs.rmSync(path.join('data', 'blobs'), { recursive: true, force: true });
+  fs.rmSync(path.join('data', 'admin-audit.log'), { force: true });
 });
 
 after(() => {
@@ -87,8 +93,27 @@ async function postJson(url, body) {
   return { status: res.status, body: await res.json() };
 }
 
+async function postJsonAuthed(url, body, token = 'test-admin-token') {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: await res.json() };
+}
+
 async function getJson(url) {
   const res = await fetch(url);
+  return { status: res.status, body: await res.json() };
+}
+
+async function getJsonAuthed(url, token = 'test-admin-token') {
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
   return { status: res.status, body: await res.json() };
 }
 
@@ -212,6 +237,8 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(meta.compliance.evidence.qaUrl, 'https://example.org/granite/security-review.pdf');
     assert.equal(meta.compliance.assurance.status, 'submitted-not-verified');
     assert.ok(meta.compliance.assurance.evidenceUrlCount >= 8);
+    assert.equal(meta.admin.reviewStatus, 'submitted');
+    assert.equal(meta.admin.reviewedAt, null);
 
     const complianceSvc = dao.service.find(s => s.type === 'NHDAOComplianceChecklist');
     assert.ok(complianceSvc, 'DAO DID should include NHDAOComplianceChecklist service');
@@ -343,6 +370,41 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     // tests, the only warning is the global "anchor not configured" one
     // which is excluded from the per-row flag — so hasWarnings is false.
     for (const rec of r.body.records) assert.equal(rec.hasWarnings, false, JSON.stringify(rec));
+    assert.ok(r.body.records.every(rec => rec.reviewStatus));
+  });
+
+  it('protects admin APIs and records review decisions with audit history', async () => {
+    const listNoAuth = await getJson(`${baseUrl}/api/admin/records`);
+    assert.equal(listNoAuth.status, 401);
+
+    const list = await getJsonAuthed(`${baseUrl}/api/admin/records?status=submitted`);
+    assert.equal(list.status, 200);
+    assert.ok(Array.isArray(list.body.records));
+    assert.ok(list.body.records.length >= 1);
+
+    const target = list.body.records[0].registryId;
+    const review = await postJsonAuthed(`${baseUrl}/api/admin/records/${target}/review`, {
+      reviewer: 'Test Reviewer',
+      note: 'Opened for review',
+    });
+    assert.equal(review.status, 200);
+    assert.equal(review.body.meta.admin.reviewStatus, 'under_review');
+    assert.equal(review.body.event.fromStatus, 'submitted');
+    assert.equal(review.body.event.toStatus, 'under_review');
+
+    const approve = await postJsonAuthed(`${baseUrl}/api/admin/records/${target}/approve`, {
+      reviewer: 'Test Reviewer',
+      reason: 'Evidence checklist is complete',
+    });
+    assert.equal(approve.status, 200);
+    assert.equal(approve.body.meta.admin.reviewStatus, 'approved');
+    assert.equal(approve.body.meta.admin.decisionReason, 'Evidence checklist is complete');
+
+    const full = await getJsonAuthed(`${baseUrl}/api/admin/records/${target}`);
+    assert.equal(full.status, 200);
+    assert.equal(full.body.meta.admin.reviewStatus, 'approved');
+    assert.ok(full.body.audit.length >= 2);
+    assert.ok(full.body.audit.some(ev => ev.toStatus === 'approved'));
   });
 
   it('exposes health and readiness endpoints', async () => {

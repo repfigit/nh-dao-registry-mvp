@@ -9,8 +9,9 @@
  * directly, so a single grep here documents the configuration surface and
  * future schema validation has one place to live.
  *
- * Capability flags (`hasPublicPinning`, `anchorEnabled`, `filingAuthEnabled`)
- * answer "is feature X usable right now" without exposing secrets.
+ * Capability flags (`hasPublicPinning`, `anchorEnabled`, `filingAuthEnabled`,
+ * `adminAuthEnabled`) answer "is feature X usable right now" without exposing
+ * secrets.
  */
 
 const trim = (v) => (typeof v === 'string' ? v.trim() : v);
@@ -38,6 +39,15 @@ export function filingApiKey() {
 }
 export function filingAuthEnabled() {
   return Boolean(filingApiKey());
+}
+
+/* ---------- admin auth ---------- */
+
+export function adminApiKey() {
+  return trim(process.env.ADMIN_API_KEY) || '';
+}
+export function adminAuthEnabled() {
+  return Boolean(adminApiKey());
 }
 
 /* ---------- rate limits ---------- */

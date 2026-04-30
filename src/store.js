@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.join('data', 'records');
+const ADMIN_AUDIT = path.join('data', 'admin-audit.log');
 
 function dir(registryId) {
   return path.join(ROOT, registryId);
@@ -69,6 +70,12 @@ export function saveRecord(registryId, { dao, agent, meta, governanceBytes }) {
   if (governanceBytes) fs.writeFileSync(path.join(d, 'governance.bin'), Buffer.from(governanceBytes));
 }
 
+export function saveMeta(registryId, meta) {
+  if (!exists(registryId)) return false;
+  fs.writeFileSync(path.join(dir(registryId), 'meta.json'), JSON.stringify(meta, null, 2));
+  return true;
+}
+
 export function loadRecord(registryId) {
   if (!exists(registryId)) return null;
   const d = dir(registryId);
@@ -92,4 +99,21 @@ export function loadAgent(registryId) {
 export function loadMeta(registryId) {
   if (!exists(registryId)) return null;
   return JSON.parse(fs.readFileSync(path.join(dir(registryId), 'meta.json'), 'utf8'));
+}
+
+export function appendAdminAudit(event) {
+  fs.mkdirSync(path.dirname(ADMIN_AUDIT), { recursive: true });
+  fs.appendFileSync(ADMIN_AUDIT, `${JSON.stringify(event)}\n`);
+}
+
+export function listAdminAudit(registryId) {
+  if (!fs.existsSync(ADMIN_AUDIT)) return [];
+  return fs.readFileSync(ADMIN_AUDIT, 'utf8')
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(line => {
+      try { return JSON.parse(line); }
+      catch { return null; }
+    })
+    .filter(event => event && (!registryId || event.registryId === registryId));
 }

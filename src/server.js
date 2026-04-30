@@ -7,9 +7,13 @@
  *   GET  /healthz                       process liveness
  *   GET  /readyz                        local-store/key readiness
  *   GET  /inspect                       record list and inspector
+ *   GET  /admin                         Secretary of State review portal
  *   GET  /api/records                   list filings
  *   POST /api/file                      submit a filing
  *   GET  /api/records/:id               full record (DAO + agent + meta)
+ *   GET  /api/admin/records             admin review queue
+ *   GET  /api/admin/records/:id         admin filing detail + audit history
+ *   POST /api/admin/records/:id/:action admin review action
  *   GET  /api/verify/:id                run end-to-end verification
  *   GET  /dao/:id/did.json              did:web resolution for DAO DID
  *   GET  /agent/:id/did.json            did:web resolution for agent DID
@@ -30,19 +34,33 @@ import { fileURLToPath } from 'node:url';
 
 import { file as runFiling } from './publication.js';
 import { verifyDao } from './verifier.js';
-import { listRegistryIds, loadRecord, loadDao, loadAgent, loadMeta } from './store.js';
+import {
+  listRegistryIds, loadRecord, loadDao, loadAgent, loadMeta,
+  saveMeta, appendAdminAudit, listAdminAudit,
+} from './store.js';
 import { loadOrCreateKeyPair } from './crypto.js';
 import { publicKeyJwk } from './crypto.js';
 import { anchorEnabled } from './anchor.js';
 import { readLocal } from './ipfs.js';
 import { registryDid } from './didweb.js';
-import { serverConfig, filingApiKey, filingRate, verifyRate } from './config.js';
+import { serverConfig, filingApiKey, adminApiKey, filingRate, verifyRate } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 
 const { host: HOST, scheme: SCHEME, controllerKeyPath: CONTROLLER_KEY_PATH, bodyLimit: REQUEST_BODY_LIMIT, port: PORT, isTest: IS_TEST } = serverConfig();
 const FILING_API_KEY = filingApiKey();
+const ADMIN_API_KEY = adminApiKey();
+
+const ADMIN_STATUSES = new Set(['submitted', 'under_review', 'needs_correction', 'approved', 'denied', 'withdrawn', 'revoked']);
+const ADMIN_ACTIONS = new Map([
+  ['review', 'under_review'],
+  ['request-correction', 'needs_correction'],
+  ['approve', 'approved'],
+  ['deny', 'denied'],
+  ['withdraw', 'withdrawn'],
+  ['revoke', 'revoked'],
+]);
 
 const app = express();
 app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
@@ -105,6 +123,90 @@ function requireFilingAuth(req, res, next) {
     return res.status(401).json({ error: 'unauthorized' });
   }
   next();
+}
+
+function requireAdminAuth(req, res, next) {
+  if (!ADMIN_API_KEY) return res.status(503).json({ error: 'admin auth not configured' });
+  const header = req.get('authorization') || '';
+  const m = header.match(/^Bearer\s+(.+)$/i);
+  if (!m || !constantTimeEqual(m[1].trim(), ADMIN_API_KEY)) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  next();
+}
+
+function nowIso() {
+  return new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+}
+
+function ensureAdmin(meta) {
+  return {
+    reviewStatus: 'submitted',
+    submittedAt: meta.filed || null,
+    reviewedAt: null,
+    reviewedBy: null,
+    decisionReason: null,
+    correctionRequestedAt: null,
+    notesCount: 0,
+    ...(meta.admin || {}),
+  };
+}
+
+function summarizeRecord(id, meta) {
+  const admin = ensureAdmin(meta);
+  return {
+    registryId: id,
+    daoDid: meta.daoDid,
+    agentDid: meta.agentDid,
+    daoName: meta.daoName,
+    agentName: meta.agentName,
+    filed: meta.filed,
+    anchorStatus: meta.status,
+    reviewStatus: admin.reviewStatus,
+    reviewedAt: admin.reviewedAt,
+    reviewedBy: admin.reviewedBy,
+    hasWarnings: Array.isArray(meta.warnings) && meta.warnings.some(w => !(w.category === 'anchor' && w.kind === 'config')),
+  };
+}
+
+function applyAdminAction(registryId, meta, action, body = {}) {
+  const targetStatus = ADMIN_ACTIONS.get(action) || body.reviewStatus;
+  if (!ADMIN_STATUSES.has(targetStatus)) {
+    const err = new Error('unsupported review status');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const reviewer = String(body.reviewer || 'Secretary of State reviewer').trim().slice(0, 120);
+  const reason = String(body.reason || '').trim().slice(0, 2000);
+  const note = String(body.note || '').trim().slice(0, 4000);
+  const at = nowIso();
+  const previousAdmin = ensureAdmin(meta);
+
+  const admin = {
+    ...previousAdmin,
+    reviewStatus: targetStatus,
+    reviewedAt: at,
+    reviewedBy: reviewer,
+    decisionReason: reason || null,
+    correctionRequestedAt: targetStatus === 'needs_correction' ? at : previousAdmin.correctionRequestedAt,
+    notesCount: previousAdmin.notesCount + (note ? 1 : 0),
+  };
+  meta.admin = admin;
+  saveMeta(registryId, meta);
+
+  const event = {
+    at,
+    registryId,
+    action,
+    fromStatus: previousAdmin.reviewStatus,
+    toStatus: targetStatus,
+    reviewer,
+    reason: reason || null,
+    note: note || null,
+  };
+  appendAdminAudit(event);
+  return { meta, event };
 }
 
 /**
@@ -184,20 +286,7 @@ app.get('/ipfs/:cid', (req, res) => {
 app.get('/api/records', (req, res) => {
   const out = listRegistryIds().map(id => {
     const meta = loadMeta(id);
-    return {
-      registryId: id,
-      daoDid: meta.daoDid,
-      agentDid: meta.agentDid,
-      daoName: meta.daoName,
-      agentName: meta.agentName,
-      filed: meta.filed,
-      anchored: !!(meta.anchors && meta.anchors.dao),
-      // hasWarnings lets a list-only consumer flag records that need
-      // operator attention without fetching each full record's meta.
-      // The "anchor disabled globally" warning is excluded because the
-      // top-level anchorEnabled flag already conveys it.
-      hasWarnings: Array.isArray(meta.warnings) && meta.warnings.some(w => !(w.category === 'anchor' && w.kind === 'config')),
-    };
+    return { ...summarizeRecord(id, meta), anchored: !!(meta.anchors && meta.anchors.dao) };
   });
   out.sort((a, b) => (b.filed || '').localeCompare(a.filed || ''));
   res.json({ records: out, anchorEnabled: anchorEnabled() });
@@ -207,6 +296,41 @@ app.get('/api/records/:id', (req, res) => {
   const r = loadRecord(req.params.id);
   if (!r) return res.status(404).json({ error: 'not found' });
   res.json(r);
+});
+
+app.get('/api/admin/records', requireAdminAuth, (req, res) => {
+  const wanted = req.query.status && String(req.query.status);
+  if (wanted && !ADMIN_STATUSES.has(wanted)) return res.status(400).json({ error: 'unsupported review status' });
+  const records = listRegistryIds().map(id => summarizeRecord(id, loadMeta(id)))
+    .filter(r => !wanted || r.reviewStatus === wanted)
+    .sort((a, b) => {
+      const statusCompare = a.reviewStatus.localeCompare(b.reviewStatus);
+      if (wanted || statusCompare === 0) return (b.filed || '').localeCompare(a.filed || '');
+      return statusCompare;
+    });
+  res.json({ records, statuses: [...ADMIN_STATUSES] });
+});
+
+app.get('/api/admin/records/:id', requireAdminAuth, (req, res) => {
+  const record = loadRecord(req.params.id);
+  if (!record) return res.status(404).json({ error: 'not found' });
+  record.meta.admin = ensureAdmin(record.meta);
+  res.json({ ...record, audit: listAdminAudit(req.params.id) });
+});
+
+app.post('/api/admin/records/:id/:action', requireAdminAuth, (req, res) => {
+  const meta = loadMeta(req.params.id);
+  if (!meta) return res.status(404).json({ error: 'not found' });
+  const action = req.params.action;
+  if (!ADMIN_ACTIONS.has(action) && action !== 'status') {
+    return res.status(400).json({ error: 'unsupported admin action' });
+  }
+  try {
+    const result = applyAdminAction(req.params.id, meta, action, req.body || {});
+    res.json(result);
+  } catch (e) {
+    res.status(e.statusCode || 500).json({ error: e.message });
+  }
 });
 
 app.post('/api/file', filingLimiter, requireFilingAuth, async (req, res) => {
@@ -238,6 +362,7 @@ app.get('/api/verify/:id', verifyLimiter, async (req, res) => {
 
 app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/inspect', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'inspect.html')));
+app.get('/admin', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
 
 if (!IS_TEST) {
   app.listen(PORT, () => {
