@@ -45,11 +45,11 @@ evidence-backed intake validation, not legal certification.
 
 `src/didweb.js`
 Builders for the two DID documents. Each document carries a single
-`verificationMethod` (the registry's controller key, with the document's
-own DID as `controller` for the entry but the registry as the parent
-controller URL). Service endpoints for the DAO document include
+`verificationMethod` (the registry's controller key, with the registry
+`did:web:<host>` DID as the controller). Service endpoints for the DAO document include
 `RegisteredAgent` (DID-typed), `DAOGovernanceDocument` (ordered array
-with IPFS first plus optional URL), `DAOSourceCode`, `DAOUserInterface`,
+with the CID first, optional Arweave endpoints, and optional user-supplied URL),
+`DAOSourceCode`, `DAOUserInterface`,
 one or more `DAOSmartContract`, `NHDAOComplianceChecklist`, and
 `NHDAORegistryRecord`. The agent
 document carries `registeredAgent.physicalAddress` (structured),
@@ -65,7 +65,8 @@ Two-mode IPFS pinning. Always computes a real CIDv1 (sha2-256 multihash,
 raw codec) from the bytes and saves them locally to `data/blobs/`. If
 `ARWEAVE_JWK` is set, it also signs and posts the same bytes as an Arweave
 transaction and records the Arweave receipt in metadata. The local pin is
-what the verifier reads in CI; Arweave is the public durability mirror. The
+what the verifier reads in CI; Arweave is the public durability mirror and is
+independently hash-checked by the verifier when an Arweave endpoint is present. The
 mandatory-pin rule is enforced here: there is no "skip pinning" path.
 
 `src/anchor.js`

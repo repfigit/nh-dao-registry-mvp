@@ -64,16 +64,26 @@ export function releaseRegistryId(registryId) {
 export function saveRecord(registryId, { dao, agent, meta, governanceBytes }) {
   const d = dir(registryId);
   fs.mkdirSync(d, { recursive: true });
-  fs.writeFileSync(path.join(d, 'dao.json'),   JSON.stringify(dao,   null, 2));
-  fs.writeFileSync(path.join(d, 'agent.json'), JSON.stringify(agent, null, 2));
-  fs.writeFileSync(path.join(d, 'meta.json'),  JSON.stringify(meta,  null, 2));
-  if (governanceBytes) fs.writeFileSync(path.join(d, 'governance.bin'), Buffer.from(governanceBytes));
+  writeJsonAtomic(path.join(d, 'dao.json'), dao);
+  writeJsonAtomic(path.join(d, 'agent.json'), agent);
+  writeJsonAtomic(path.join(d, 'meta.json'), meta);
+  if (governanceBytes) writeFileAtomic(path.join(d, 'governance.bin'), Buffer.from(governanceBytes));
 }
 
 export function saveMeta(registryId, meta) {
   if (!exists(registryId)) return false;
-  fs.writeFileSync(path.join(dir(registryId), 'meta.json'), JSON.stringify(meta, null, 2));
+  writeJsonAtomic(path.join(dir(registryId), 'meta.json'), meta);
   return true;
+}
+
+function writeJsonAtomic(file, value) {
+  writeFileAtomic(file, JSON.stringify(value, null, 2));
+}
+
+function writeFileAtomic(file, data) {
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, file);
 }
 
 export function loadRecord(registryId) {

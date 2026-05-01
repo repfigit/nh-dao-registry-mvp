@@ -224,10 +224,15 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     const daoRes = await getJson(`${baseUrl}/dao/${registryId}/did.json`);
     assert.equal(daoRes.status, 200);
     assert.equal(daoRes.body.id, dao.id);
+    assert.equal(daoRes.body.controller, `did:web:localhost%3A${PORT}`);
+    const daoRecordSvc = daoRes.body.service.find(s => s.type === 'NHDAORegistryRecord');
+    assert.equal(daoRecordSvc.status, 'submitted-intake');
+    assert.equal(daoRecordSvc.legalStatus, 'not-determined');
 
     const agentRes = await getJson(`${baseUrl}/agent/${registryId}/did.json`);
     assert.equal(agentRes.status, 200);
     assert.equal(agentRes.body.id, agent.id);
+    assert.equal(agentRes.body.controller, `did:web:localhost%3A${PORT}`);
 
     // meta has the recorded hashes.
     assert.match(meta.daoHash,   /^sha256:[a-f0-9]{64}$/);
@@ -258,6 +263,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(named['agent signature'].ok, true);
     assert.equal(named['alsoKnownAs bidirectional'].ok, true);
     assert.equal(named['governance IPFS hash'].ok, true);
+    assert.equal(named['governance Arweave hash'].ok, true);
     // Chain checks may be absent if anchor not configured; both must be present in the report
     assert.ok('DAO chain anchor' in named);
     assert.ok('agent chain anchor' in named);
@@ -406,6 +412,12 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(full.body.meta.admin.reviewStatus, 'approved');
     assert.ok(full.body.audit.length >= 2);
     assert.ok(full.body.audit.some(ev => ev.toStatus === 'approved'));
+
+    const denyMissingReason = await postJsonAuthed(`${baseUrl}/api/admin/records/${target}/deny`, {
+      reviewer: 'Test Reviewer',
+    });
+    assert.equal(denyMissingReason.status, 400);
+    assert.match(denyMissingReason.body.error, /reason is required/);
   });
 
   it('exposes health and readiness endpoints', async () => {
@@ -418,6 +430,10 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(ready.body.status, 'ready');
     assert.equal(ready.body.checks.storeWritable, true);
     assert.equal(ready.body.checks.controllerKeyAvailable, true);
+    assert.equal(ready.body.checks.filingAuthConfigured, false);
+    assert.equal(ready.body.checks.adminAuthConfigured, true);
+    assert.equal(ready.body.checks.arweaveConfigured, false);
+    assert.deepEqual(ready.body.checks.productionConfig, []);
   });
 
   it('rejects URLs with disallowed schemes (e.g. javascript:)', async () => {
@@ -486,6 +502,22 @@ describe('NH DAO Registry MVP, end-to-end', () => {
       if (previous == null) delete process.env.MAX_GOVERNANCE_BYTES;
       else process.env.MAX_GOVERNANCE_BYTES = previous;
     }
+  });
+
+  it('rejects malformed governance byte arrays', async () => {
+    const previous = process.env.MAX_GOVERNANCE_BYTES;
+    process.env.MAX_GOVERNANCE_BYTES = '100';
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Malformed Bytes DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      governanceBytes: [1, 2, 'not-a-byte'],
+      ...completeCompliance(),
+    });
+    process.env.MAX_GOVERNANCE_BYTES = previous || '';
+    assert.equal(r.status, 400);
+    assert.ok(r.body.details.some(d => d.field === 'governanceBytes[2]'));
   });
 
   it('two filings with the same DAO name produce distinct registryIds', async () => {

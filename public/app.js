@@ -222,9 +222,8 @@ async function submit(e) {
 
 function describeWarning(w) {
   if (w.category === 'ipfs') {
-    if (w.state === 'cid-mismatch') return `Public IPFS pin returned a different CID (${w.remoteCid || 'unknown'}); the DID document records the local CID.`;
-    if (w.state === 'failed')       return `Public IPFS pin failed: ${w.detail}. Local pin is still active.`;
-    return w.detail || 'IPFS warning';
+    if (w.state === 'failed') return `Public Arweave persistence failed: ${w.detail}. The local CID record is still active.`;
+    return w.detail || 'governance persistence warning';
   }
   if (w.category === 'anchor') {
     if (w.kind === 'config') return 'Polygon Amoy chain anchor is not configured. Documents are signed and pinned, but no on-chain anchor exists.';

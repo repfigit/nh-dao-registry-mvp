@@ -144,7 +144,12 @@ export function verifyBidirectionalLink(daoDoc, agentDoc) {
 /** Verify the on-chain anchor matches the canonical hash of the document. */
 export async function verifyChainAnchor(doc, registryId, kind) {
   const expected = sha256Hex(canonicalUnsigned(doc));
-  const a = await readLatest(registryId, kind);
+  let a;
+  try {
+    a = await readLatest(registryId, kind);
+  } catch (err) {
+    return check('chain anchor readable', false, `chain read failed: ${err.shortMessage || err.message}`);
+  }
   if (!a) return check('chain anchor present', false, 'no anchor on chain');
   const ok = a.contentHash.toLowerCase() === expected.toLowerCase();
   return check('chain anchor matches', ok,
@@ -169,6 +174,30 @@ export async function verifyGovernanceIpfs(daoDoc) {
   return check('governance IPFS hash', ok,
     ok ? `bytes at ${ipfs} hash to declared sha256:${declared}`
        : `bytes hash to ${actual}, expected ${declared}`);
+}
+
+/** Verify the governance bytes on Arweave match the DAO document's contentHash. */
+export async function verifyGovernanceArweave(daoDoc) {
+  const govSvc = (daoDoc.service || []).find(s => s.type === 'DAOGovernanceDocument');
+  if (!govSvc) return check('governance Arweave hash', false, 'no DAOGovernanceDocument service');
+  const declared = (govSvc.contentHash || '').replace(/^sha256:/, '');
+  if (!declared) return check('governance Arweave hash', false, 'no contentHash declared');
+  const endpoints = Array.isArray(govSvc.serviceEndpoint) ? govSvc.serviceEndpoint : [govSvc.serviceEndpoint];
+  const ar = endpoints.find(e => typeof e === 'string' && (e.startsWith('ar://') || /^https:\/\/arweave\.net\//.test(e)));
+  if (!ar) return check('governance Arweave hash', true, 'no Arweave endpoint declared');
+  const url = ar.startsWith('ar://') ? `https://arweave.net/${ar.slice('ar://'.length)}` : ar;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) return check('governance Arweave hash', false, `GET ${url} returned HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const actual = sha256Hex(bytes);
+    const ok = actual.toLowerCase() === declared.toLowerCase();
+    return check('governance Arweave hash', ok,
+      ok ? `bytes at ${ar} hash to declared sha256:${declared}`
+         : `bytes hash to ${actual}, expected ${declared}`);
+  } catch (err) {
+    return check('governance Arweave hash', false, `Arweave fetch failed: ${err.message}`);
+  }
 }
 
 /**
@@ -274,6 +303,7 @@ export async function verifyDao(daoIdOrDid, { scheme, host } = {}) {
 
   // Governance bytes
   checks.push(await verifyGovernanceIpfs(daoDoc));
+  checks.push(await verifyGovernanceArweave(daoDoc));
 
   return {
     did,

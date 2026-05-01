@@ -316,6 +316,6 @@ Use `docs/MVP_DEPLOYMENT_SPEC.md`.
 - What is the required chain for production: still Polygon Amoy for demonstration, Polygon mainnet, or another public chain?
 - What retention period applies to filings, governance bytes, audit logs, and application logs?
 - Does policy require CloudHSM specifically, or is AWS KMS acceptable?
-- Is public IPFS pinning required, and through which provider?
+- Is public durability beyond the official registry store required, and through which provider?
 - What is the required RTO/RPO for the registry?
 - Who can trigger reanchor, key replacement, or emergency filing shutdown?

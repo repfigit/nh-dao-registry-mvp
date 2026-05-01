@@ -138,20 +138,16 @@ export async function recordAnchor(registryId, kind, version, contentHashHex) {
 export async function readLatest(registryId, kind) {
   if (!anchorConfig().address) return null;
   const c = getContract({ readonly: true });
-  try {
-    const present = await c.hasAnchor(registryId, kind);
-    if (!present) return null;
-    const a = await c.getLatest(registryId, kind);
-    return {
-      registryIdHash: a.registryIdHash,
-      version: Number(a.version),
-      kind: Number(a.kind),
-      contentHash: a.contentHash.slice(2), // strip 0x
-      anchoredAt: Number(a.anchoredAt),
-    };
-  } catch (e) {
-    return null;
-  }
+  const present = await c.hasAnchor(registryId, kind);
+  if (!present) return null;
+  const a = await c.getLatest(registryId, kind);
+  return {
+    registryIdHash: a.registryIdHash,
+    version: Number(a.version),
+    kind: Number(a.kind),
+    contentHash: a.contentHash.slice(2), // strip 0x
+    anchoredAt: Number(a.anchoredAt),
+  };
 }
 
 /** Convenience: load the deployed contract address from data/deployment-<network>.json. */

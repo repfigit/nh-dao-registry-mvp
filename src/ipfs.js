@@ -45,7 +45,15 @@ function saveLocal(cid, bytes) {
 
 /** Read bytes back from local blob store (or null if not present). */
 export function readLocal(cidStr) {
-  const file = path.join(BLOB_DIR, `${cidStr}.bin`);
+  let cid;
+  try {
+    cid = CID.parse(cidStr).toString();
+  } catch {
+    return null;
+  }
+  const root = path.resolve(BLOB_DIR);
+  const file = path.resolve(root, `${cid}.bin`);
+  if (!file.startsWith(`${root}${path.sep}`)) return null;
   if (!fs.existsSync(file)) return null;
   return new Uint8Array(fs.readFileSync(file));
 }

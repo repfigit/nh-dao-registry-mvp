@@ -166,6 +166,10 @@ describe('integration: real chain', () => {
     process.env.CONTROLLER_KEY_PATH     = path.join(TMP, 'controller.json');
     process.env.FILING_RATE_MAX         = '1000';
     process.env.VERIFY_RATE_MAX         = '1000';
+    process.env.ARWEAVE_JWK             = '';
+    process.env.ARWEAVE_HOST            = '';
+    process.env.ARWEAVE_PORT            = '';
+    process.env.ARWEAVE_PROTOCOL        = '';
 
     // Clean any prior test state.
     fs.rmSync(TMP, { recursive: true, force: true });

@@ -383,6 +383,12 @@ async function loadDetail(registryId) {
 
 async function runAction(action) {
   if (!selectedId) return;
+  const reasonRequired = ['approve', 'deny', 'request-correction', 'revoke'].includes(action);
+  if (reasonRequired && !$('reason').value.trim()) {
+    showMessage('Enter a public decision reason before taking this action.', 'error');
+    return;
+  }
+  if (['deny', 'revoke'].includes(action) && !confirm(`Confirm ${labelStatus(action)} for ${selectedId}?`)) return;
   await api(`/api/admin/records/${selectedId}/${action}`, {
     method: 'POST',
     body: JSON.stringify({

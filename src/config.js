@@ -32,6 +32,22 @@ export function serverConfig() {
   };
 }
 
+export function productionConfigIssues() {
+  if (process.env.NODE_ENV !== 'production') return [];
+  const issues = [];
+  const { host, scheme } = serverConfig();
+  if (!host || host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
+    issues.push('REGISTRY_HOST must be a public host in production');
+  }
+  if (scheme !== 'https') issues.push('REGISTRY_SCHEME must be https in production');
+  if (!filingAuthEnabled()) issues.push('FILING_API_KEY must be set in production');
+  if (!adminAuthEnabled()) issues.push('ADMIN_API_KEY must be set in production');
+  if (!controllerKeyEnv()) issues.push('CONTROLLER_PRIVATE_KEY must be set in production');
+  if (!anchorEnabled()) issues.push('AMOY_RPC_URL, ANCHOR_CONTRACT_ADDRESS, and ANCHOR_PRIVATE_KEY must configure anchoring in production');
+  if (!hasPublicPinning()) issues.push('ARWEAVE_JWK must be set in production');
+  return issues;
+}
+
 /* ---------- filing auth ---------- */
 
 export function filingApiKey() {

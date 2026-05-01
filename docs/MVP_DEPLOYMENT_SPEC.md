@@ -114,9 +114,9 @@ npm run test:integration
 npm start
 ```
 
-For a container deployment, use a minimal Node 20 image, install with `npm ci --omit=dev` after contract artifacts are available, expose port `3000`, and mount persistent storage at `/app/data`.
-
-The repository does not currently include a Dockerfile. Add one before container deployment.
+For a container deployment, use the included `Dockerfile`, install with
+`npm ci --omit=dev`, expose port `3000`, and mount persistent storage at
+`/app/data`.
 
 ## Smoke Test
 
@@ -141,7 +141,7 @@ Confirm:
 - The response includes `registryId`, DAO DID, agent DID, governance CID, and no anchor warnings.
 - `/dao/<registryId>/did.json` resolves.
 - `/agent/<registryId>/did.json` resolves.
-- `/api/verify/<registryId>` reports signatures, controller key, bidirectional link, chain anchors, and governance IPFS hash as passing.
+- `/api/verify/<registryId>` reports signatures, controller key, bidirectional link, chain anchors, governance CID hash, and Arweave hash checks as passing or explicitly not configured.
 
 ## Operations
 
@@ -191,7 +191,7 @@ Recommended cadence for MVP:
 - No key rotation workflow.
 - No deactivation workflow.
 - No production audit log.
-- Optional public IPFS pinning; local pin fallback remains authoritative for MVP verification.
+- Arweave public persistence is supported; local CID storage remains the fallback for MVP verification when Arweave is unavailable.
 
 ## Deployment Decision
 

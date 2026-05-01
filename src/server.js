@@ -5,7 +5,7 @@
  *
  *   GET  /                              filing UI
  *   GET  /healthz                       process liveness
- *   GET  /readyz                        local-store/key readiness
+ *   GET  /readyz                        readiness/config checks
  *   GET  /inspect                       record list and inspector
  *   GET  /admin                         Secretary of State review portal
  *   GET  /api/records                   list filings
@@ -43,7 +43,7 @@ import { publicKeyJwk } from './crypto.js';
 import { anchorEnabled } from './anchor.js';
 import { readLocal } from './ipfs.js';
 import { registryDid } from './didweb.js';
-import { serverConfig, filingApiKey, adminApiKey, filingRate, verifyRate } from './config.js';
+import { serverConfig, filingApiKey, adminApiKey, filingRate, verifyRate, productionConfigIssues, hasPublicPinning } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
@@ -75,6 +75,10 @@ app.get('/readyz', (_, res) => {
     storeWritable: false,
     controllerKeyAvailable: false,
     anchorConfigured: anchorEnabled(),
+    filingAuthConfigured: Boolean(FILING_API_KEY),
+    adminAuthConfigured: Boolean(ADMIN_API_KEY),
+    arweaveConfigured: hasPublicPinning(),
+    productionConfig: productionConfigIssues(),
   };
 
   try {
@@ -94,7 +98,7 @@ app.get('/readyz', (_, res) => {
     checks.controllerKeyAvailable = false;
   }
 
-  const ready = checks.storeWritable && checks.controllerKeyAvailable;
+  const ready = checks.storeWritable && checks.controllerKeyAvailable && checks.productionConfig.length === 0;
   res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not-ready', checks });
 });
 
@@ -180,6 +184,11 @@ function applyAdminAction(registryId, meta, action, body = {}) {
   const reviewer = String(body.reviewer || 'Secretary of State reviewer').trim().slice(0, 120);
   const reason = String(body.reason || '').trim().slice(0, 2000);
   const note = String(body.note || '').trim().slice(0, 4000);
+  if (['approve', 'deny', 'request-correction', 'revoke'].includes(action) && !reason) {
+    const err = new Error('decision reason is required for this admin action');
+    err.statusCode = 400;
+    throw err;
+  }
   const at = nowIso();
   const previousAdmin = ensureAdmin(meta);
 
@@ -345,7 +354,7 @@ app.post('/api/file', filingLimiter, requireFilingAuth, async (req, res) => {
     }
     // eslint-disable-next-line no-console
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'filing failed' });
   }
 });
 
@@ -354,7 +363,8 @@ app.get('/api/verify/:id', verifyLimiter, async (req, res) => {
     const report = await verifyDao(req.params.id, { host: HOST, scheme: SCHEME });
     res.json(report);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error(e);
+    res.status(500).json({ error: 'verification failed' });
   }
 });
 
@@ -365,6 +375,12 @@ app.get('/inspect', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'inspect.html
 app.get('/admin', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
 
 if (!IS_TEST) {
+  const productionIssues = productionConfigIssues();
+  if (productionIssues.length) {
+    // eslint-disable-next-line no-console
+    console.error(`Refusing to start with unsafe production config: ${productionIssues.join('; ')}`);
+    process.exit(1);
+  }
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`NH DAO Registry MVP listening on ${SCHEME}://${HOST} (port ${PORT})`);

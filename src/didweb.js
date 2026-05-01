@@ -2,8 +2,8 @@
  * Build the two DID documents (DAO + registered agent) for a filing.
  *
  * The two documents are linked bidirectionally via `alsoKnownAs`. Each
- * document contains its own verificationMethod (the controller's signing
- * key, registered to the registry's controller URL), service endpoints,
+ * document contains its own verificationMethod (the registry controller's
+ * signing key, with the registry DID as controller), service endpoints,
  * and a `proof` block that the caller fills in via `signDocument`.
  *
  * `did:web` resolution: did:web:host:dao:<id> resolves by HTTPS GET to
@@ -60,7 +60,7 @@ export function buildDaoDocument(opts) {
     registryId,
     daoName,
     agentDidStr,
-    controllerUrl,
+    controllerDid,
     controllerKid,
     publicKey,
     governanceEndpoints,    // ordered array, IPFS first
@@ -115,19 +115,20 @@ export function buildDaoDocument(opts) {
     id: `${id}#record`,
     type: 'NHDAORegistryRecord',
     serviceEndpoint: `https://${host}/dao/${registryId}`,
-    status: 'active',
+    status: 'submitted-intake',
+    legalStatus: 'not-determined',
   });
 
   return {
     '@context':   [W3C_DID_CONTEXT, JWS_2020_CONTEXT],
     id,
     alsoKnownAs:  [agentDidStr],
-    controller:   controllerUrl,
+    controller:   controllerDid,
     name:         daoName,
     verificationMethod: [{
       id: `${id}#${controllerKid}`,
       type: 'JsonWebKey2020',
-      controller: controllerUrl,
+      controller: controllerDid,
       publicKeyJwk: publicKeyJwk(publicKey),
     }],
     service: services,
@@ -148,7 +149,7 @@ export function buildAgentDocument(opts) {
     agentName,
     agentAddress,   // raw string
     agentEmail,
-    controllerUrl,
+    controllerDid,
     controllerKid,
     publicKey,
     created,
@@ -161,7 +162,7 @@ export function buildAgentDocument(opts) {
     '@context':   [W3C_DID_CONTEXT, JWS_2020_CONTEXT],
     id,
     alsoKnownAs:  [daoDidStr],
-    controller:   controllerUrl,
+    controller:   controllerDid,
     name:         agentName,
     registeredAgent: {
       name: agentName,
@@ -171,13 +172,13 @@ export function buildAgentDocument(opts) {
     verificationMethod: [{
       id: `${id}#${controllerKid}`,
       type: 'JsonWebKey2020',
-      controller: controllerUrl,
+      controller: controllerDid,
       publicKeyJwk: publicKeyJwk(publicKey),
     }],
     service: [
       { id: `${id}#agent-of`, type: 'AgentOfRecord',         serviceEndpoint: [daoDidStr] },
       { id: `${id}#record`,   type: 'NHDAORegistryRecord',
-        serviceEndpoint: `https://${host}/agent/${registryId}`, status: 'active' },
+        serviceEndpoint: `https://${host}/agent/${registryId}`, status: 'submitted-intake', legalStatus: 'not-determined' },
     ],
     version,
     created,

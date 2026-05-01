@@ -19,8 +19,9 @@ For every filing, the registry does the following:
    evidence intake only; the registry does not certify legal status.
 2. Pins the governance bytes locally under a real IPFS CIDv1, and optionally
    persists the same bytes as an Arweave transaction. Mandatory.
-3. Builds a DAO `did:web` document and a registered-agent `did:web`
-   document, linked bidirectionally via `alsoKnownAs`.
+3. Builds DAO and registered-agent `did:web` intake-receipt documents,
+   linked bidirectionally via `alsoKnownAs` and marked
+   `submitted-intake` / `not-determined`.
 4. Signs both documents with the registry's Ed25519 controller key
    (detached `JsonWebSignature2020` over the canonicalized JSON, per
    RFC 8785).
@@ -29,8 +30,8 @@ For every filing, the registry does the following:
    document, version-tracked.
 6. Hosts both DID documents at resolvable HTTPS URLs. Anyone can run
    `did:web` resolution against `did:web:<host>:dao:<id>` and verify the
-   signature, the chain anchor, the IPFS hash, and the bidirectional link
-   to the agent.
+   signature, the chain anchor, the governance hash, optional Arweave
+   mirror, and the bidirectional link to the agent.
 
 ## Learning walkthrough
 
@@ -146,7 +147,7 @@ npm run test:e2e          # HTTP e2e (does not require chain config)
 ```
 
 The e2e suite exercises validation, signing, did:web hosting, alsoKnownAs,
-IPFS hash verification, the RSA 301-B MVP evidence checklist, health/readiness
+governance hash verification, the RSA 301-B MVP evidence checklist, health/readiness
 probes, and the resolver. It does not require a chain connection; chain anchor
 checks are reported but not required to pass.
 
@@ -162,7 +163,7 @@ node scripts/verify-record.js granite-state-governance-dao
 
 Resolves the DAO DID, fetches the agent, verifies both signatures, checks
 bidirectional alsoKnownAs, reads the latest on-chain anchor, and confirms
-the IPFS-pinned governance bytes hash to the value in the DAO document.
+the governance bytes hash to the value in the DAO document.
 
 Each check prints with ✔ or ✘ and a one-line detail.
 

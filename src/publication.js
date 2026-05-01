@@ -29,6 +29,7 @@ import {
   signDocument, attachAnchor,
   daoDid, agentDid,
   canonicalContentHash,
+  registryDid,
 } from './didweb.js';
 import { validateFiling, slugify } from './validation.js';
 import { pin } from './ipfs.js';
@@ -37,12 +38,6 @@ import { saveRecord, reserveRegistryId, releaseRegistryId } from './store.js';
 import { maxGovernanceBytes } from './config.js';
 
 const CONTROLLER_KID = 'controller-1';
-/**
- * Path on the registry host that resolves to the SoS-controlled controller
- * URL. Embedded in the DID document's `controller` field. Kept as a named
- * constant so a spec change has a single point of edit.
- */
-const CONTROLLER_PATH = '/sos';
 /**
  * NOTE: Update workflows are out of scope for v0.6 (see SPEC.md). Every
  * filing anchors version 1; the contract supports sequential versions but
@@ -90,7 +85,7 @@ export async function file(input, ctx) {
   const filing = v.value;
 
   const { host, scheme = 'https', controllerKeyPath = 'data/keys/controller.json' } = ctx;
-  const controllerUrl = `${scheme}://${host}${CONTROLLER_PATH}`;
+  const controllerDid = registryDid(host);
   const kp = loadOrCreateKeyPair(controllerKeyPath);
 
   // Atomically reserve a unique registry directory. Two concurrent filings
@@ -102,7 +97,7 @@ export async function file(input, ctx) {
   try {
     // 1. Build governance bytes (mandatory pin in step 2).
     governanceBytes = input.governanceBytes
-      ? new Uint8Array(input.governanceBytes)
+      ? governanceBytesFromInput(input.governanceBytes)
       : new Uint8Array(canonicalBytes({                        // fallback: a JSON stub for the demo
           type: 'NHDAORegistryGovernance',
           daoName: filing.daoName,
@@ -128,6 +123,8 @@ export async function file(input, ctx) {
 
   // Governance endpoints: IPFS first, then the optional URL the filer supplied.
   const governanceEndpoints = [pinned.ipfsUri];
+  if (pinned.arweave?.uri) governanceEndpoints.push(pinned.arweave.uri);
+  if (pinned.arweave?.gatewayUrl) governanceEndpoints.push(pinned.arweave.gatewayUrl);
   if (filing.govUrl) governanceEndpoints.push(filing.govUrl);
 
   const created = nowIso();
@@ -139,7 +136,7 @@ export async function file(input, ctx) {
     host, registryId,
     daoName: filing.daoName,
     agentDidStr,
-    controllerUrl,
+    controllerDid,
     controllerKid: CONTROLLER_KID,
     publicKey: kp.publicKey,
     governanceEndpoints,
@@ -158,7 +155,7 @@ export async function file(input, ctx) {
     agentName: filing.agentName,
     agentAddress: filing.agentAddress,
     agentEmail: filing.agentEmail,
-    controllerUrl,
+    controllerDid,
     controllerKid: CONTROLLER_KID,
     publicKey: kp.publicKey,
     created,
@@ -291,4 +288,22 @@ export async function file(input, ctx) {
   saveRecord(registryId, { dao: daoDoc, agent: agentDoc, meta });
 
   return { registryId, dao: daoDoc, agent: agentDoc, meta, warnings: meta.warnings };
+}
+
+function governanceBytesFromInput(value) {
+  if (!Array.isArray(value) && !ArrayBuffer.isView(value) && !(value instanceof ArrayBuffer)) {
+    const err = new Error('governanceBytes must be an array of byte values');
+    err.statusCode = 400;
+    err.details = [{ field: 'governanceBytes', error: err.message }];
+    throw err;
+  }
+  const values = value instanceof ArrayBuffer ? new Uint8Array(value) : Array.from(value);
+  const invalid = values.findIndex(v => !Number.isInteger(v) || v < 0 || v > 255);
+  if (invalid !== -1) {
+    const err = new Error('governanceBytes must contain only integers from 0 to 255');
+    err.statusCode = 400;
+    err.details = [{ field: `governanceBytes[${invalid}]`, error: err.message }];
+    throw err;
+  }
+  return new Uint8Array(values);
 }
