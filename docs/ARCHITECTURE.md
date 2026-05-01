@@ -63,8 +63,7 @@ invalidating the signature.
 `src/ipfs.js`
 Two-mode IPFS pinning. Always computes a real CIDv1 (sha2-256 multihash,
 raw codec) from the bytes and saves them locally to `data/blobs/`. If
-`W3UP_AGENT_KEY` and `W3UP_DELEGATION_PROOF` are set, also uploads to
-Storacha. The local pin is what the verifier reads in CI; the public
+`PINATA_JWT` is set, also uploads to Pinata. The local pin is what the verifier reads in CI; the public
 pin is what gives the document long-term durability. The mandatory-pin
 rule is enforced here: there is no "skip pinning" path.
 

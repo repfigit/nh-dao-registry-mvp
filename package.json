@@ -28,9 +28,6 @@
     "express": "^4.21.0",
     "multiformats": "^13.1.0"
   },
-  "optionalDependencies": {
-    "@storacha/client": "^2.1.3"
-  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.0"

@@ -92,17 +92,8 @@ export function anchorEnabled() {
   );
 }
 
-/* ---------- IPFS public pinning ---------- */
-
-export function w3upConfig() {
-  return {
-    agentKey:        process.env.W3UP_AGENT_KEY        || '',
-    delegationProof: process.env.W3UP_DELEGATION_PROOF || '',
-  };
-}
 export function hasPublicPinning() {
-  const { agentKey, delegationProof } = w3upConfig();
-  return Boolean(agentKey && delegationProof);
+  return Boolean(process.env.PINATA_JWT);
 }
 
 /* ---------- controller key ---------- */
