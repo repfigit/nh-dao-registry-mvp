@@ -18,7 +18,9 @@
     "deploy:amoy": "hardhat run scripts/deploy.cjs --network amoy",
     "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
     "node:local": "hardhat node",
-    "verify": "node scripts/verify-record.js"
+    "verify": "node scripts/verify-record.js",
+    "balances": "node scripts/balances.js",
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "@noble/curves": "^1.4.0",

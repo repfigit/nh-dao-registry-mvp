@@ -73,6 +73,9 @@ async function getJson(url) {
   const res = await fetch(url);
   return { status: res.status, body: await res.json() };
 }
+async function postJsonAuthed(url, body) {
+  return postJson(url, body, { Authorization: 'Bearer integration-admin-token' });
+}
 
 function completeCompliance(overrides = {}) {
   return {
@@ -166,6 +169,7 @@ describe('integration: real chain', () => {
     process.env.CONTROLLER_KEY_PATH     = path.join(TMP, 'controller.json');
     process.env.FILING_RATE_MAX         = '1000';
     process.env.VERIFY_RATE_MAX         = '1000';
+    process.env.ADMIN_API_KEY           = 'integration-admin-token';
     process.env.ARWEAVE_JWK             = '';
     process.env.ARWEAVE_HOST            = '';
     process.env.ARWEAVE_PORT            = '';
@@ -175,6 +179,7 @@ describe('integration: real chain', () => {
     fs.rmSync(TMP, { recursive: true, force: true });
     fs.rmSync(path.join('data', 'records'), { recursive: true, force: true });
     fs.rmSync(path.join('data', 'blobs'),   { recursive: true, force: true });
+    fs.rmSync(path.join('data', 'admin-audit.log'), { force: true });
 
     // 4. Start the registry server. Cache-bust the import so this is a
     //    fresh module load with the chain env in place.
@@ -297,6 +302,39 @@ describe('integration: real chain', () => {
     assert.equal(named['DAO chain anchor'].ok,   true, JSON.stringify(named['DAO chain anchor']));
     assert.equal(named['agent chain anchor'].ok, true, JSON.stringify(named['agent chain anchor']));
     assert.equal(v.body.ok, true);
+  });
+
+  it('approval issues and anchors sequential version 2', async () => {
+    const filing = {
+      daoName: 'Approval Version DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance(),
+    };
+    const f = await postJson(`${baseUrl}/api/file`, filing);
+    assert.equal(f.status, 200);
+
+    const approved = await postJsonAuthed(`${baseUrl}/api/admin/records/${f.body.registryId}/approve`, {
+      reviewer: 'Integration Reviewer',
+      reason: 'All evidence is present and the registry checks pass',
+    });
+    assert.equal(approved.status, 200);
+    assert.equal(approved.body.meta.version, 2);
+    assert.equal(approved.body.meta.admin.reviewStatus, 'approved');
+    assert.ok(approved.body.meta.anchors.dao);
+    assert.ok(approved.body.meta.anchors.agent);
+
+    const idHash = keccakId(f.body.registryId);
+    assert.equal(Number(await contract.latestVersion(idHash, 0)), 2);
+    assert.equal(Number(await contract.latestVersion(idHash, 1)), 2);
+
+    const v = await getJson(`${baseUrl}/api/verify/${f.body.registryId}`);
+    assert.equal(v.status, 200);
+    assert.equal(v.body.ok, true);
+    const named = Object.fromEntries(v.body.checks.map(c => [c.name, c]));
+    assert.match(named['DAO chain anchor'].detail, /v2/);
+    assert.match(named['agent chain anchor'].detail, /v2/);
   });
 
   // NOTE: deploy-script integration (OWNER + transferOwnership flow) is

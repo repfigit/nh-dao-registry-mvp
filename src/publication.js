@@ -34,7 +34,7 @@ import {
 import { validateFiling, slugify } from './validation.js';
 import { pin } from './ipfs.js';
 import { recordAnchor, anchorEnabled, KIND } from './anchor.js';
-import { saveRecord, reserveRegistryId, releaseRegistryId } from './store.js';
+import { loadRecord, saveRecord, reserveRegistryId, releaseRegistryId } from './store.js';
 import { maxGovernanceBytes } from './config.js';
 
 const CONTROLLER_KID = 'controller-1';
@@ -51,6 +51,42 @@ function deriveRegistryId(daoName, salt) {
   const base = slugify(daoName);
   if (!base) return `dao-${salt.slice(0, 8)}`;
   return base;
+}
+
+function stripMutableEvidence(document) {
+  const { proof, anchors, ...unsigned } = document;
+  return unsigned;
+}
+
+function updateRegistryRecordService(document, status, legalStatus) {
+  return {
+    ...document,
+    service: (document.service || []).map(service => {
+      if (service.type !== 'NHDAORegistryRecord') return service;
+      return {
+        ...service,
+        status,
+        legalStatus,
+      };
+    }),
+  };
+}
+
+function appendPriorVersion(meta) {
+  const prior = {
+    version: meta.version || INITIAL_VERSION,
+    daoHash: meta.daoHash || null,
+    agentHash: meta.agentHash || null,
+    anchors: meta.anchors || null,
+    status: meta.status || null,
+    reviewStatus: meta.admin?.reviewStatus || 'submitted',
+    issuedAt: meta.filed || null,
+  };
+  const versions = Array.isArray(meta.versions) ? meta.versions : [];
+  if (versions.some(v => v.version === prior.version && v.daoHash === prior.daoHash && v.agentHash === prior.agentHash)) {
+    return versions;
+  }
+  return [...versions, prior];
 }
 
 /**
@@ -287,6 +323,140 @@ export async function file(input, ctx) {
   const meta = buildMeta();
   saveRecord(registryId, { dao: daoDoc, agent: agentDoc, meta });
 
+  return { registryId, dao: daoDoc, agent: agentDoc, meta, warnings: meta.warnings };
+}
+
+/**
+ * Issue the Secretary-of-State-approved registration version for an existing
+ * filing. The original filing remains in `meta.versions`; the live DID
+ * documents move to the next sequential version and are signed+anchored as
+ * the approved public record.
+ */
+export async function issueApprovedRegistration(registryId, ctx, decision = {}) {
+  const record = loadRecord(registryId);
+  if (!record) {
+    const err = new Error('record not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const { host, controllerKeyPath = 'data/keys/controller.json' } = ctx;
+  const kp = loadOrCreateKeyPair(controllerKeyPath);
+  const issuedAt = nowIso();
+  const previousMeta = record.meta || {};
+  const nextVersion = Number(previousMeta.version || INITIAL_VERSION) + 1;
+
+  let daoDoc = updateRegistryRecordService(stripMutableEvidence(record.dao), 'approved-registration', 'registered');
+  daoDoc = {
+    ...daoDoc,
+    controller: registryDid(host),
+    version: nextVersion,
+    updated: issuedAt,
+    registryStatus: 'approved',
+    approval: {
+      approvedAt: issuedAt,
+      approvedBy: decision.reviewer || previousMeta.admin?.reviewedBy || null,
+      reason: decision.reason || previousMeta.admin?.decisionReason || null,
+    },
+  };
+
+  let agentDoc = updateRegistryRecordService(stripMutableEvidence(record.agent), 'approved-registration', 'registered');
+  agentDoc = {
+    ...agentDoc,
+    controller: registryDid(host),
+    version: nextVersion,
+    updated: issuedAt,
+    registryStatus: 'approved',
+    approval: {
+      approvedAt: issuedAt,
+      approvedBy: decision.reviewer || previousMeta.admin?.reviewedBy || null,
+      reason: decision.reason || previousMeta.admin?.decisionReason || null,
+    },
+  };
+
+  daoDoc = signDocument(daoDoc, kp.privateKey, CONTROLLER_KID, issuedAt);
+  agentDoc = signDocument(agentDoc, kp.privateKey, CONTROLLER_KID, issuedAt);
+
+  const daoHash = canonicalContentHash(daoDoc);
+  const agentHash = canonicalContentHash(agentDoc);
+  const anchors = { dao: null, agent: null };
+  const anchorErrors = { dao: null, agent: null };
+
+  const deriveStatus = () => {
+    if (!anchorEnabled()) return 'anchor-disabled';
+    if (anchors.dao && anchors.agent) return 'anchored';
+    if (anchors.dao || anchors.agent) return 'partial';
+    if (anchorErrors.dao || anchorErrors.agent) return 'unanchored';
+    return 'pending';
+  };
+
+  const buildWarnings = () => {
+    const out = (previousMeta.warnings || []).filter(w => !(w.category === 'anchor'));
+    if (anchorEnabled()) {
+      if (anchorErrors.dao) out.push({ category: 'anchor', kind: 'dao', detail: anchorErrors.dao.message });
+      if (anchorErrors.agent) out.push({ category: 'anchor', kind: 'agent', detail: anchorErrors.agent.message });
+    } else {
+      out.push({ category: 'anchor', kind: 'config', detail: 'chain anchor disabled (AMOY_RPC_URL/ANCHOR_CONTRACT_ADDRESS/ANCHOR_PRIVATE_KEY not set)' });
+    }
+    return out;
+  };
+
+  const buildMeta = () => ({
+    ...previousMeta,
+    version: nextVersion,
+    approvedVersion: nextVersion,
+    approvedAt: issuedAt,
+    registryLifecycle: 'approved-registration',
+    daoHash: `sha256:${daoHash}`,
+    agentHash: `sha256:${agentHash}`,
+    anchors,
+    anchorErrors,
+    status: deriveStatus(),
+    warnings: buildWarnings(),
+    versions: appendPriorVersion(previousMeta),
+  });
+
+  saveRecord(registryId, { dao: daoDoc, agent: agentDoc, meta: { ...buildMeta(), status: deriveStatus() } });
+
+  if (anchorEnabled()) {
+    try {
+      anchors.dao = await recordAnchor(registryId, KIND.DAO, nextVersion, daoHash);
+    } catch (e) {
+      anchorErrors.dao = { message: e.shortMessage || e.message };
+      // eslint-disable-next-line no-console
+      console.error(`approval anchor (dao): ${anchorErrors.dao.message}`);
+    }
+    if (anchors.dao) {
+      daoDoc = attachAnchor(daoDoc, {
+        chainId: anchors.dao.chainIdCaip2,
+        txHash: anchors.dao.txHash,
+        anchoredAt: issuedAt,
+        version: nextVersion,
+        contentHash: `sha256:${daoHash}`,
+      });
+      saveRecord(registryId, { dao: daoDoc, agent: agentDoc, meta: buildMeta() });
+    }
+
+    try {
+      anchors.agent = await recordAnchor(registryId, KIND.AGENT, nextVersion, agentHash);
+    } catch (e) {
+      anchorErrors.agent = { message: e.shortMessage || e.message };
+      // eslint-disable-next-line no-console
+      console.error(`approval anchor (agent): ${anchorErrors.agent.message}`);
+    }
+    if (anchors.agent) {
+      agentDoc = attachAnchor(agentDoc, {
+        chainId: anchors.agent.chainIdCaip2,
+        txHash: anchors.agent.txHash,
+        anchoredAt: issuedAt,
+        version: nextVersion,
+        contentHash: `sha256:${agentHash}`,
+      });
+    }
+  }
+
+  const meta = buildMeta();
+  saveRecord(registryId, { dao: daoDoc, agent: agentDoc, meta });
   return { registryId, dao: daoDoc, agent: agentDoc, meta, warnings: meta.warnings };
 }
 

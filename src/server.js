@@ -10,7 +10,8 @@
  *   GET  /admin                         Secretary of State review portal
  *   GET  /api/records                   list filings
  *   POST /api/file                      submit a filing
- *   GET  /api/records/:id               full record (DAO + agent + meta)
+ *   GET  /api/records/:id               public record projection
+ *   GET  /api/admin/balances            operator wallet balances
  *   GET  /api/admin/records             admin review queue
  *   GET  /api/admin/records/:id         admin filing detail + audit history
  *   POST /api/admin/records/:id/:action admin review action
@@ -32,8 +33,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { file as runFiling } from './publication.js';
+import { file as runFiling, issueApprovedRegistration } from './publication.js';
 import { verifyDao } from './verifier.js';
+import { operationalBalances } from './balances.js';
 import {
   listRegistryIds, loadRecord, loadDao, loadAgent, loadMeta,
   saveMeta, appendAdminAudit, listAdminAudit,
@@ -173,6 +175,50 @@ function summarizeRecord(id, meta) {
   };
 }
 
+function publicRecord(record) {
+  const { meta } = record;
+  const admin = ensureAdmin(meta);
+  return {
+    registryId: meta.registryId,
+    daoDid: meta.daoDid,
+    agentDid: meta.agentDid,
+    daoName: meta.daoName,
+    agentName: meta.agentName,
+    filed: meta.filed,
+    version: meta.version,
+    anchorStatus: meta.status,
+    reviewStatus: admin.reviewStatus,
+    approvedAt: meta.approvedAt || null,
+    registryLifecycle: meta.registryLifecycle || 'submitted-intake',
+    governance: {
+      cid: meta.governance?.cid || null,
+      ipfsUri: meta.governance?.ipfsUri || null,
+      gatewayUrl: meta.governance?.gatewayUrl || null,
+      contentHash: meta.governance?.contentHash || null,
+      arweave: meta.governance?.arweave || null,
+    },
+    contracts: meta.contracts || [],
+    compliance: meta.compliance ? {
+      status: meta.compliance.status,
+      legalStatus: meta.compliance.legalStatus,
+      statute: meta.compliance.statute,
+      registeredDomain: meta.compliance.registeredDomain,
+      publicAddress: meta.compliance.publicAddress,
+      lifecycleStatus: meta.compliance.lifecycleStatus,
+      evidence: meta.compliance.evidence,
+      assurance: meta.compliance.assurance,
+      attestations: meta.compliance.attestations,
+    } : null,
+    anchors: meta.anchors || null,
+    warnings: meta.warnings || [],
+    links: {
+      daoDidDocument: `/dao/${meta.registryId}/did.json`,
+      agentDidDocument: `/agent/${meta.registryId}/did.json`,
+      verify: `/api/verify/${meta.registryId}`,
+    },
+  };
+}
+
 function applyAdminAction(registryId, meta, action, body = {}) {
   const targetStatus = ADMIN_ACTIONS.get(action) || body.reviewStatus;
   if (!ADMIN_STATUSES.has(targetStatus)) {
@@ -304,7 +350,11 @@ app.get('/api/records', (req, res) => {
 app.get('/api/records/:id', (req, res) => {
   const r = loadRecord(req.params.id);
   if (!r) return res.status(404).json({ error: 'not found' });
-  res.json(r);
+  res.json(publicRecord(r));
+});
+
+app.get('/api/admin/balances', requireAdminAuth, async (_, res) => {
+  res.json(await operationalBalances());
 });
 
 app.get('/api/admin/records', requireAdminAuth, (req, res) => {
@@ -327,7 +377,7 @@ app.get('/api/admin/records/:id', requireAdminAuth, (req, res) => {
   res.json({ ...record, audit: listAdminAudit(req.params.id) });
 });
 
-app.post('/api/admin/records/:id/:action', requireAdminAuth, (req, res) => {
+app.post('/api/admin/records/:id/:action', requireAdminAuth, async (req, res) => {
   const meta = loadMeta(req.params.id);
   if (!meta) return res.status(404).json({ error: 'not found' });
   const action = req.params.action;
@@ -336,6 +386,18 @@ app.post('/api/admin/records/:id/:action', requireAdminAuth, (req, res) => {
   }
   try {
     const result = applyAdminAction(req.params.id, meta, action, req.body || {});
+    if (action === 'approve') {
+      const issued = await issueApprovedRegistration(req.params.id, {
+        host: HOST, scheme: SCHEME, controllerKeyPath: CONTROLLER_KEY_PATH,
+      }, {
+        reviewer: result.event.reviewer,
+        reason: result.event.reason,
+      });
+      result.meta = issued.meta;
+      result.dao = issued.dao;
+      result.agent = issued.agent;
+      result.warnings = issued.warnings;
+    }
     res.json(result);
   } catch (e) {
     res.status(e.statusCode || 500).json({ error: e.message });

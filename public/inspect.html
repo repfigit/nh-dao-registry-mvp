@@ -240,10 +240,14 @@ async function loadList() {
     li.querySelector('[data-link-agent]').href   = `/agent/${r.registryId}/did.json`;
     if (r.hasWarnings) li.querySelector('[data-warning-chip]').classList.remove('hidden');
 
-    const full = await fetch(`/api/records/${r.registryId}`).then(x => x.json());
-    li.querySelector('[data-dao]').textContent   = JSON.stringify(full.dao,   null, 2);
-    li.querySelector('[data-agent]').textContent = JSON.stringify(full.agent, null, 2);
-    renderRecordWarnings(li, full.meta || {});
+    const [publicRecord, daoDoc, agentDoc] = await Promise.all([
+      fetch(`/api/records/${r.registryId}`).then(x => x.json()),
+      fetch(`/dao/${r.registryId}/did.json`).then(x => x.json()),
+      fetch(`/agent/${r.registryId}/did.json`).then(x => x.json()),
+    ]);
+    li.querySelector('[data-dao]').textContent   = JSON.stringify(daoDoc,   null, 2);
+    li.querySelector('[data-agent]').textContent = JSON.stringify(agentDoc, null, 2);
+    renderRecordWarnings(li, publicRecord || {});
 
     const checks = li.querySelector('[data-checks]');
     li.querySelector('[data-verify]').addEventListener('click', async () => {

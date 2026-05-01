@@ -406,12 +406,30 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(approve.status, 200);
     assert.equal(approve.body.meta.admin.reviewStatus, 'approved');
     assert.equal(approve.body.meta.admin.decisionReason, 'Evidence checklist is complete');
+    assert.equal(approve.body.meta.version, 2);
+    assert.equal(approve.body.meta.approvedVersion, 2);
+    assert.equal(approve.body.meta.registryLifecycle, 'approved-registration');
+    assert.equal(approve.body.dao.version, 2);
+    assert.equal(approve.body.dao.registryStatus, 'approved');
+    assert.ok(approve.body.meta.versions.some(v => v.version === 1));
+    const recordSvc = approve.body.dao.service.find(s => s.type === 'NHDAORegistryRecord');
+    assert.equal(recordSvc.status, 'approved-registration');
+    assert.equal(recordSvc.legalStatus, 'registered');
 
     const full = await getJsonAuthed(`${baseUrl}/api/admin/records/${target}`);
     assert.equal(full.status, 200);
     assert.equal(full.body.meta.admin.reviewStatus, 'approved');
+    assert.equal(full.body.meta.version, 2);
     assert.ok(full.body.audit.length >= 2);
     assert.ok(full.body.audit.some(ev => ev.toStatus === 'approved'));
+
+    const publicRecord = await getJson(`${baseUrl}/api/records/${target}`);
+    assert.equal(publicRecord.status, 200);
+    assert.equal(publicRecord.body.version, 2);
+    assert.equal(publicRecord.body.reviewStatus, 'approved');
+    assert.equal(publicRecord.body.daoDid, full.body.meta.daoDid);
+    assert.equal(publicRecord.body.agentEmail, undefined);
+    assert.equal(publicRecord.body.dao, undefined);
 
     const denyMissingReason = await postJsonAuthed(`${baseUrl}/api/admin/records/${target}/deny`, {
       reviewer: 'Test Reviewer',
@@ -434,6 +452,16 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(ready.body.checks.adminAuthConfigured, true);
     assert.equal(ready.body.checks.arweaveConfigured, false);
     assert.deepEqual(ready.body.checks.productionConfig, []);
+  });
+
+  it('protects operational balance checks behind admin auth', async () => {
+    const noAuth = await getJson(`${baseUrl}/api/admin/balances`);
+    assert.equal(noAuth.status, 401);
+
+    const balances = await getJsonAuthed(`${baseUrl}/api/admin/balances`);
+    assert.equal(balances.status, 200);
+    assert.equal(balances.body.arweave.configured, false);
+    assert.equal(balances.body.anchorSigner.configured, false);
   });
 
   it('rejects URLs with disallowed schemes (e.g. javascript:)', async () => {
