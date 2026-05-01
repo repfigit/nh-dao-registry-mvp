@@ -63,9 +63,9 @@ invalidating the signature.
 `src/ipfs.js`
 Two-mode IPFS pinning. Always computes a real CIDv1 (sha2-256 multihash,
 raw codec) from the bytes and saves them locally to `data/blobs/`. If
-`ARWEAVE_JWK` is set, it also uploads the same bytes to Arweave through
-Turbo and records the Arweave receipt in metadata. The local pin is what
-the verifier reads in CI; Arweave is the public durability mirror. The
+`ARWEAVE_JWK` is set, it also signs and posts the same bytes as an Arweave
+transaction and records the Arweave receipt in metadata. The local pin is
+what the verifier reads in CI; Arweave is the public durability mirror. The
 mandatory-pin rule is enforced here: there is no "skip pinning" path.
 
 `src/anchor.js`

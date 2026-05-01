@@ -23,6 +23,7 @@
   "dependencies": {
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
+    "arweave": "^1.15.7",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.0",
     "express": "^4.21.0",
@@ -31,9 +32,5 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.0"
-  },
-  "optionalDependencies": {
-    "@ardrive/turbo-sdk": "^1.41.2",
-    "utf-8-validate": "^5.0.10"
   }
 }

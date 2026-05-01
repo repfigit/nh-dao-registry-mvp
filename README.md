@@ -18,7 +18,7 @@ For every filing, the registry does the following:
    decentralization/governance attestations. Accepted filings are recorded as
    evidence intake only; the registry does not certify legal status.
 2. Pins the governance bytes locally under a real IPFS CIDv1, and optionally
-   persists the same bytes to Arweave through Turbo. Mandatory.
+   persists the same bytes as an Arweave transaction. Mandatory.
 3. Builds a DAO `did:web` document and a registered-agent `did:web`
    document, linked bidirectionally via `alsoKnownAs`.
 4. Signs both documents with the registry's Ed25519 controller key
@@ -90,7 +90,7 @@ verifier shows whether the pieces still agree.
 - Node.js 20 or newer (for native `fetch`, `--watch`, `node:test`).
 - A Polygon Amoy test account with a small amount of test MATIC. Get free
   test MATIC at https://faucet.polygon.technology.
-- (Optional) An Arweave wallet with Turbo credits for public permanent
+- (Optional) An Arweave wallet with AR balance for public permanent
   persistence. Without it, the registry computes a real CIDv1 and pins to a
   local blob store.
 
@@ -216,8 +216,8 @@ This is a reference. Before production, harden these:
 - The contract `owner` is the deployer's EOA. The contract supports a
   two-step `transferOwnership` / `acceptOwnership` flow; production should
   use it to hand ownership to a multisig (Gnosis Safe) plus a timelock.
-- Public persistence falls back to local CID storage when Arweave Turbo is
-  not configured. The publication API surfaces `publicPinStatus` and a
+- Public persistence falls back to local CID storage when Arweave is not
+  configured. The publication API surfaces `publicPinStatus` and a
   top-level `warnings` array so an operator can detect a fall-back; before
   production, add at least one redundant public durability provider and a
   formal retention/export policy.

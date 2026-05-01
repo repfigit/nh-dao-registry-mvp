@@ -53,7 +53,6 @@ before(async () => {
   process.env.ANCHOR_CONTRACT_ADDRESS = '';
   process.env.ANCHOR_PRIVATE_KEY = '';
   process.env.ARWEAVE_JWK = '';
-  process.env.ARWEAVE_TURBO_TOKEN = '';
 
   // Clear any prior test artifacts.
   fs.rmSync(TMP, { recursive: true, force: true });
@@ -686,14 +685,14 @@ describe('filing auth', () => {
 });
 
 describe('IPFS pin (local fallback)', () => {
-  it('reports publicPinStatus as not-configured when Arweave Turbo env is missing', async () => {
+  it('reports publicPinStatus as not-configured when Arweave env is missing', async () => {
     const { pin } = await import('../src/ipfs.js');
     const bytes = new TextEncoder().encode('hello-ipfs');
     const result = await pin(bytes, 'hello.txt');
     assert.match(result.cid, /^bafk/);
     assert.equal(result.public, false);
     assert.equal(result.publicPinStatus.state, 'not-configured');
-    assert.equal(result.publicPinStatus.provider, 'arweave-turbo');
+    assert.equal(result.publicPinStatus.provider, 'arweave');
     assert.equal(result.arweave, null);
   });
 
@@ -707,7 +706,7 @@ describe('IPFS pin (local fallback)', () => {
     assert.equal(result.public, false);
     assert.equal(result.gatewayUrl, `/ipfs/${result.cid}`);
     assert.equal(result.publicPinStatus.state, 'failed');
-    assert.equal(result.publicPinStatus.provider, 'arweave-turbo');
+    assert.equal(result.publicPinStatus.provider, 'arweave');
     assert.match(result.publicPinStatus.detail, /ARWEAVE_JWK/);
   });
 });

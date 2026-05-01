@@ -11,9 +11,9 @@
  *    identifier; verification recomputes the hash and compares.
  *
  * 2. Arweave public persistence (when ARWEAVE_JWK is set):
- *    Upload the same bytes to Arweave through Turbo. The CID remains the
- *    canonical content identifier inside the DID document, while the
- *    Arweave receipt gives operators a permanent public mirror.
+ *    Sign and post the same bytes as an Arweave transaction. The CID
+ *    remains the canonical content identifier inside the DID document,
+ *    while the Arweave receipt gives operators a permanent public mirror.
  *
  * The mandatory-pinning rule from the spec is enforced here: every filing
  * gets pinned. If the public mode fails, we still have the local pin (the
@@ -22,6 +22,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import Arweave from 'arweave';
 import { CID } from 'multiformats/cid';
 import * as raw from 'multiformats/codecs/raw';
 import { sha256 } from 'multiformats/hashes/sha2';
@@ -70,24 +71,23 @@ export async function pin(bytes, filename = 'governance.bin') {
   let arweave = null;
   // Status describes the public-pin attempt. State is one of:
   //   'not-configured' | 'pinned' | 'failed'
-  let publicPinStatus = { state: 'not-configured', provider: 'arweave-turbo', detail: 'set ARWEAVE_JWK for Arweave Turbo public persistence' };
+  let publicPinStatus = { state: 'not-configured', provider: 'arweave', detail: 'set ARWEAVE_JWK for Arweave public persistence' };
   if (process.env.ARWEAVE_JWK) {
     try {
-      arweave = await uploadViaArweaveTurbo(bytes, filename, cidStr);
+      arweave = await uploadViaArweave(bytes, filename, cidStr);
       publicPin = true;
       publicPinStatus = {
         state: 'pinned',
-        provider: 'arweave-turbo',
-        detail: `persisted to Arweave via Turbo as ${arweave.txId}`,
+        provider: 'arweave',
+        detail: `posted to Arweave as ${arweave.txId}`,
         txId: arweave.txId,
         uri: arweave.uri,
         gatewayUrl: arweave.gatewayUrl,
-        winc: arweave.winc,
-        owner: arweave.owner,
+        reward: arweave.reward,
       };
     } catch (err) {
       arweave = null;
-      publicPinStatus = { state: 'failed', provider: 'arweave-turbo', detail: `Arweave Turbo upload failed: ${err.message}` };
+      publicPinStatus = { state: 'failed', provider: 'arweave', detail: `Arweave upload failed: ${err.message}` };
       // eslint-disable-next-line no-console
       console.warn(`ipfs: ${publicPinStatus.detail}; local pin still active`);
     }
@@ -117,29 +117,26 @@ function arweaveJwk() {
   }
 }
 
-async function uploadViaArweaveTurbo(bytes, filename, cidStr) {
-  const { TurboFactory } = await import('@ardrive/turbo-sdk');
-  const turbo = TurboFactory.authenticated({
-    privateKey: arweaveJwk(),
-    token: process.env.ARWEAVE_TURBO_TOKEN || 'arweave',
+async function uploadViaArweave(bytes, filename, cidStr) {
+  const client = Arweave.init({
+    host: process.env.ARWEAVE_HOST || 'arweave.net',
+    port: Number(process.env.ARWEAVE_PORT || 443),
+    protocol: process.env.ARWEAVE_PROTOCOL || 'https',
   });
-  const response = await turbo.upload({
-    data: Buffer.from(bytes),
-    dataItemOpts: {
-      tags: [
-        { name: 'Content-Type', value: 'application/octet-stream' },
-        { name: 'App-Name', value: 'NH-DAO-Registry-MVP' },
-        { name: 'File-Name', value: filename },
-        { name: 'IPFS-CID', value: cidStr },
-      ],
-    },
-  });
-  if (!response || !response.id) throw new Error('Turbo response did not include an Arweave transaction id');
+  const jwk = arweaveJwk();
+  const transaction = await client.createTransaction({ data: Buffer.from(bytes) }, jwk);
+  transaction.addTag('Content-Type', 'application/octet-stream');
+  transaction.addTag('App-Name', 'NH-DAO-Registry-MVP');
+  transaction.addTag('File-Name', filename);
+  transaction.addTag('IPFS-CID', cidStr);
+  await client.transactions.sign(transaction, jwk);
+  const uploader = await client.transactions.getUploader(transaction);
+  while (!uploader.isComplete) await uploader.uploadChunk();
+  if (!transaction.id) throw new Error('Arweave transaction did not include an id');
   return {
-    txId: response.id,
-    uri: `ar://${response.id}`,
-    gatewayUrl: `https://arweave.net/${response.id}`,
-    winc: response.winc ? String(response.winc) : null,
-    owner: response.owner || null,
+    txId: transaction.id,
+    uri: `ar://${transaction.id}`,
+    gatewayUrl: `https://arweave.net/${transaction.id}`,
+    reward: transaction.reward || null,
   };
 }
