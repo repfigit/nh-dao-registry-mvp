@@ -48,7 +48,10 @@ import { registryDid } from './didweb.js';
 import { serverConfig, filingApiKey, adminApiKey, filingRate, verifyRate, productionConfigIssues, hasPublicPinning } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
+const PUBLIC_DIR = [
+  path.resolve(__dirname, '..', 'public'),       // tsx/dev: src/ -> public/
+  path.resolve(__dirname, '..', '..', 'public'), // compiled: dist/src/ -> public/
+].find(dir => fs.existsSync(dir)) || path.resolve('public');
 
 const { host: HOST, scheme: SCHEME, controllerKeyPath: CONTROLLER_KEY_PATH, bodyLimit: REQUEST_BODY_LIMIT, port: PORT, isTest: IS_TEST } = serverConfig();
 const FILING_API_KEY = filingApiKey();
