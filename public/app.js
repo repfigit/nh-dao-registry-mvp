@@ -12,7 +12,6 @@ const EVM_ADDR_RX = /^0x[a-fA-F0-9]{40}$/;
 const DOMAIN_LABEL_RX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 const TLD_RX = /^[a-z]{2,63}$/i;
 const REQUIRED_URL_FIELDS = [
-  'govUrl',
   'sourceUrl',
   'guiUrl',
   'qaUrl',
@@ -39,8 +38,8 @@ const ATTESTATION_FIELDS = [
 const WIZARD_STEPS = [
   {
     title: 'DAO identity',
-    help: 'Enter the public DAO name, bylaws/governance link, source code link, and app link.',
-    fields: ['daoName', 'govUrl', 'sourceUrl', 'guiUrl'],
+    help: 'Enter the public DAO name, upload governance/bylaws, and provide source code and app links.',
+    fields: ['daoName', 'governanceFile', 'govUrl', 'sourceUrl', 'guiUrl'],
   },
   {
     title: 'Registered agent',
@@ -65,6 +64,7 @@ const WIZARD_STEPS = [
 ];
 
 let currentStep = 0;
+const MAX_BROWSER_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 function setNote(id, ok, msg) {
   const el = $(id);
@@ -78,6 +78,18 @@ function checkAll() {
   else if (!NAME_RX.test(daoName)) setNote('daoName-note', false, 'Must end in DAO or LAO.');
   else setNote('daoName-note', true, 'Naming rule satisfied.');
 
+  const govFile = $('governanceFile').files && $('governanceFile').files[0];
+  const govUrlOk = isHttpUrl($('govUrl').value);
+  if (govFile && govFile.size > MAX_BROWSER_UPLOAD_BYTES) {
+    setNote('governanceFile-note', false, `File is ${formatBytes(govFile.size)}. Keep MVP uploads under ${formatBytes(MAX_BROWSER_UPLOAD_BYTES)}.`);
+  } else if (govFile) {
+    setNote('governanceFile-note', true, `${govFile.name} selected (${formatBytes(govFile.size)}). This file will be pinned.`);
+  } else if (govUrlOk) {
+    setNote('governanceFile-note', true, 'No file selected. The public URL will be recorded, but not downloaded.');
+  } else {
+    setNote('governanceFile-note', false, 'Upload a governance/bylaws file or provide a public URL.');
+  }
+
   const addr = $('agentAddress').value.trim();
   if (!addr) setNote('agentAddress-note', false, 'Required.');
   else if (PO_BOX_RX.test(addr)) setNote('agentAddress-note', false, 'PO boxes are not accepted.');
@@ -90,15 +102,22 @@ function checkAll() {
   const okBasic = !!$('agentName').value.trim() && !!$('agentEmail').value.trim();
   const contracts = collectContracts();
   const okContracts = contracts.length > 0 && contracts.every(c => CAIP2_RX.test(c.chainId) && EVM_ADDR_RX.test(c.address));
+  const okGovernance = (govFile && govFile.size > 0 && govFile.size <= MAX_BROWSER_UPLOAD_BYTES) || govUrlOk;
   const okUrls = REQUIRED_URL_FIELDS.every(id => isHttpUrl($(id).value));
   const okCompliance = isPublicDomain($('registeredDomain').value.trim())
     && EVM_ADDR_RX.test($('publicAddress').value.trim())
     && ATTESTATION_FIELDS.every(field => $(`att-${field}`).checked);
 
-  const ok = okName && okAddr && okBasic && okContracts && okUrls && okCompliance;
+  const ok = okName && okGovernance && okAddr && okBasic && okContracts && okUrls && okCompliance;
   $('fileBtn').disabled = !ok;
   $('status').textContent = ok ? 'Ready to file.' : 'Fill required fields, evidence URLs, attestations, and contract rows.';
   updateWizardState();
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function isHttpUrl(raw) {
@@ -167,8 +186,11 @@ function collectContracts() {
 
 function stepIsComplete(index) {
   if (index === 0) {
+    const govFile = $('governanceFile').files && $('governanceFile').files[0];
+    const okGovernance = (govFile && govFile.size > 0 && govFile.size <= MAX_BROWSER_UPLOAD_BYTES) || isHttpUrl($('govUrl').value);
     return NAME_RX.test($('daoName').value.trim())
-      && ['govUrl', 'sourceUrl', 'guiUrl'].every(id => isHttpUrl($(id).value));
+      && okGovernance
+      && ['sourceUrl', 'guiUrl'].every(id => isHttpUrl($(id).value));
   }
   if (index === 1) {
     const addr = $('agentAddress').value.trim();
@@ -193,7 +215,7 @@ function stepIsComplete(index) {
 
 function stepIssue(index) {
   if (stepIsComplete(index)) return '';
-  if (index === 0) return 'Complete the DAO name and use public http(s) URLs for governance, source code, and the DAO user interface.';
+  if (index === 0) return 'Complete the DAO name, upload a governance/bylaws file or provide a public governance URL, and use public http(s) URLs for source code and the DAO user interface.';
   if (index === 1) return 'Complete the registered agent name, email, and a physical New Hampshire street address.';
   if (index === 2) return 'Add at least one contract row with a CAIP-2 chain ID and a 40-byte EVM address.';
   if (index === 3) return 'Complete every evidence URL, use a public registered domain, and check every attestation.';
@@ -316,6 +338,12 @@ async function submit(e) {
     contracts:    collectContracts(),
     compliance:   collectCompliance(),
   };
+  const govFile = $('governanceFile').files && $('governanceFile').files[0];
+  if (govFile) {
+    $('status').textContent = `Reading ${govFile.name}...`;
+    payload.governanceFilename = govFile.name;
+    payload.governanceBytesBase64 = await fileToBase64(govFile);
+  }
 
   let res;
   try {
@@ -349,6 +377,18 @@ async function submit(e) {
   }
 
   renderResult(body);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',').pop() : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('file read failed'));
+    reader.readAsDataURL(file);
+  });
 }
 
 function describeWarning(w) {
@@ -446,13 +486,17 @@ function renderResult({ registryId, dao, agent, meta, warnings }) {
 document.addEventListener('DOMContentLoaded', () => {
   [
     'daoName',
+    'governanceFile',
     'agentName',
     'agentAddress',
     'agentEmail',
     ...REQUIRED_URL_FIELDS,
     'registeredDomain',
     'publicAddress',
-  ].forEach(id => $(id).addEventListener('input', checkAll));
+  ].forEach(id => {
+    const eventName = id === 'governanceFile' ? 'change' : 'input';
+    $(id).addEventListener(eventName, checkAll);
+  });
   ATTESTATION_FIELDS.forEach(field => $(`att-${field}`).addEventListener('change', checkAll));
   $('addContract').addEventListener('click', () => addContractRow());
   $('form').addEventListener('submit', submit);

@@ -280,6 +280,36 @@ describe('NH DAO Registry MVP, end-to-end', () => {
     assert.equal(meta.status, 'anchor-disabled', `unexpected status: ${meta.status}`);
   });
 
+  it('accepts an uploaded governance file without downloading a URL', async () => {
+    const bytes = Buffer.from('%PDF-1.4\nUploaded bylaws for the MVP\n%%EOF\n', 'utf8');
+    const r = await postJson(`${baseUrl}/api/file`, {
+      daoName: 'Uploaded Bylaws DAO',
+      agentName: 'Jane Smith',
+      agentAddress: '123 Main Street, Concord, NH 03301',
+      agentEmail: 'jane@example.org',
+      ...completeCompliance({ govUrl: undefined }),
+      governanceFilename: 'uploaded-bylaws.pdf',
+      governanceBytesBase64: bytes.toString('base64'),
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.meta.governance.filename, 'uploaded-bylaws.pdf');
+    assert.equal(r.body.meta.governance.source, 'uploaded-file');
+    assert.equal(r.body.meta.governance.byteLength, bytes.length);
+
+    const gov = r.body.dao.service.find(s => s.type === 'DAOGovernanceDocument');
+    assert.ok(gov.serviceEndpoint.every(endpoint => endpoint));
+    assert.ok(!gov.serviceEndpoint.some(endpoint => endpoint === 'https://example.org/granite/bylaws.pdf'));
+
+    const cid = r.body.meta.governance.cid;
+    const fetched = await fetch(`${baseUrl}/ipfs/${cid}`).then(res => res.arrayBuffer());
+    assert.deepEqual(Buffer.from(fetched), bytes);
+
+    const ver = await getJson(`${baseUrl}/api/verify/${r.body.registryId}`);
+    assert.equal(ver.status, 200);
+    const named = Object.fromEntries(ver.body.checks.map(c => [c.name, c]));
+    assert.equal(named['governance IPFS hash'].ok, true);
+  });
+
   it('rejects filings missing RSA 301-B compliance evidence', async () => {
     const r = await postJson(`${baseUrl}/api/file`, {
       daoName: 'Incomplete Compliance DAO',

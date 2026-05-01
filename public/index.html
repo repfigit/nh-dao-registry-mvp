@@ -267,9 +267,9 @@
       <section class="wizard-step" data-step="0" data-title="DAO identity">
         <h3 class="text-sm section-title">DAO identity</h3>
         <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
-          <p><strong>What you are doing:</strong> naming the DAO and pointing the registry to the public materials that explain the DAO's rules, code, and user interface.</p>
-          <p><strong>What the app does next:</strong> the backend will copy these references into a signed DAO DID document. The governance document is also converted into content-addressed evidence so the verifier can later prove that the bytes did not change.</p>
-          <p><strong>For this MVP:</strong> use public HTTPS URLs. Localhost, private network URLs, and placeholder links will be rejected by the server.</p>
+          <p><strong>What you are doing:</strong> naming the DAO and providing the public materials that explain the DAO's rules, code, and user interface.</p>
+          <p><strong>What the app does next:</strong> if you upload bylaws or a governance file, the backend pins those exact bytes for permanent storage. If you only provide a URL, the MVP records the URL but does not download it.</p>
+          <p><strong>For this MVP:</strong> upload the PDF or governance file you want preserved. Optional URLs must be public HTTPS URLs; localhost, private network URLs, and placeholder links will be rejected by the server.</p>
         </div>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <label class="block">
@@ -279,9 +279,16 @@
           </label>
 
           <label class="block">
-            <span class="text-sm font-medium">Governance / bylaws document URL</span>
-            <input id="govUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
-            <p class="mt-1 text-xs text-slate-500">Even if you supply a URL, the registry pins a public copy and lists IPFS first.</p>
+            <span class="text-sm font-medium">Upload governance / bylaws file</span>
+            <input id="governanceFile" type="file" accept=".pdf,.json,.txt,.md,application/pdf,application/json,text/plain,text/markdown"
+              class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white">
+            <p id="governanceFile-note" class="mt-1 text-xs text-slate-500">Preferred for MVP permanence. The selected file is pinned and hashed.</p>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-medium">Governance / bylaws public URL</span>
+            <input id="govUrl" type="url" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://example.org/bylaws.pdf">
+            <p class="mt-1 text-xs text-slate-500">Optional mirror/source link. The MVP records this URL but does not fetch it.</p>
           </label>
 
           <label class="block">

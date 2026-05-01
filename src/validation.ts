@@ -134,8 +134,18 @@ export function validateFiling(input: any) {
     errors.push({ field: 'contracts', error: 'At least one DAO smart contract public address is required for RSA 301-B listing evidence' });
   }
 
+  const hasUploadedGovernance = Boolean(input.governanceBytes || input.governanceBytesBase64);
+  const govUrl = String(input.govUrl || '').trim();
+  if (govUrl) {
+    const r = validateUrl(govUrl);
+    if (!r.ok) errors.push({ field: 'govUrl', error: r.error });
+    else out.govUrl = r.value;
+  } else if (!hasUploadedGovernance) {
+    errors.push({ field: 'govUrl', error: 'Upload a governance/bylaws file or provide a public governance URL' });
+  }
+
   // Public evidence URLs required by the MVP RSA 301-B eligibility layer.
-  for (const field of ['govUrl', 'sourceUrl', 'guiUrl']) {
+  for (const field of ['sourceUrl', 'guiUrl']) {
     const v = (input[field] || '').trim();
     const r = validateUrl(v);
     if (!r.ok) errors.push({ field, error: r.error });
@@ -149,7 +159,7 @@ export function validateFiling(input: any) {
       ...c.value,
       assurance: {
         ...c.value.assurance,
-        evidenceUrlCount: c.value.assurance.evidenceUrlCount + 3, // govUrl, sourceUrl, guiUrl
+        evidenceUrlCount: c.value.assurance.evidenceUrlCount + 3, // governance artifact, sourceUrl, guiUrl
       },
     };
   }

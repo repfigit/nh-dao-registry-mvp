@@ -107,7 +107,7 @@ function reserveUniqueId(daoName) {
 
 /**
  * Run a full filing.
- * @param {object} input - { daoName, agentName, agentAddress, agentEmail, govUrl?, sourceUrl?, guiUrl?, contracts?, governanceBytes? }
+ * @param {object} input - { daoName, agentName, agentAddress, agentEmail, govUrl?, sourceUrl?, guiUrl?, contracts?, governanceBytes?, governanceBytesBase64?, governanceFilename? }
  * @param {object} ctx - { host, scheme, controllerKeyPath }
  */
 export async function file(input: any, ctx: any) {
@@ -132,8 +132,8 @@ export async function file(input: any, ctx: any) {
   let governanceBytes;
   try {
     // 1. Build governance bytes (mandatory pin in step 2).
-    governanceBytes = input.governanceBytes
-      ? governanceBytesFromInput(input.governanceBytes)
+    governanceBytes = input.governanceBytes || input.governanceBytesBase64
+      ? governanceBytesFromInput(input.governanceBytes || input.governanceBytesBase64)
       : new Uint8Array(canonicalBytes({                        // fallback: a JSON stub for the demo
           type: 'NHDAORegistryGovernance',
           daoName: filing.daoName,
@@ -150,7 +150,7 @@ export async function file(input: any, ctx: any) {
       err.details = [{ field: 'governanceBytes', error: err.message }];
       throw err;
     }
-    pinned = await pin(governanceBytes, `${registryId}-governance.bin`);
+    pinned = await pin(governanceBytes, safeGovernanceFilename(input.governanceFilename, registryId));
   } catch (e) {
     releaseRegistryId(registryId);
     throw e;
@@ -242,6 +242,9 @@ export async function file(input: any, ctx: any) {
       publicPin: pinned.public,
       publicPinStatus: pinned.publicPinStatus,
       arweave: pinned.arweave || null,
+      filename: input.governanceFilename || null,
+      byteLength: governanceBytes.length,
+      source: (input.governanceBytes || input.governanceBytesBase64) ? 'uploaded-file' : 'generated-placeholder',
     },
     contracts: filing.contracts,
     compliance: filing.compliance,
@@ -460,9 +463,36 @@ export async function issueApprovedRegistration(registryId: string, ctx: any, de
   return { registryId, dao: daoDoc, agent: agentDoc, meta, warnings: meta.warnings };
 }
 
+function safeGovernanceFilename(raw: any, registryId: string) {
+  const name = String(raw || '').trim()
+    .replace(/[/\\?%*:|"<>]/g, '-')
+    .replace(/\s+/g, ' ')
+    .slice(0, 160);
+  return name || `${registryId}-governance.bin`;
+}
+
 function governanceBytesFromInput(value: any) {
+  if (typeof value === 'string') {
+    const raw = value.includes(',') ? value.split(',').pop() : value;
+    if (!raw || !/^[A-Za-z0-9+/]+={0,2}$/.test(raw) || raw.length % 4 === 1) {
+      const err: any = new Error('governanceBytesBase64 must be valid base64');
+      err.statusCode = 400;
+      err.details = [{ field: 'governanceBytesBase64', error: err.message }];
+      throw err;
+    }
+    try {
+      const bytes = new Uint8Array(Buffer.from(raw, 'base64'));
+      if (bytes.length === 0) throw new Error('empty decoded file');
+      return bytes;
+    } catch {
+      const err: any = new Error('governanceBytesBase64 must be valid base64');
+      err.statusCode = 400;
+      err.details = [{ field: 'governanceBytesBase64', error: err.message }];
+      throw err;
+    }
+  }
   if (!Array.isArray(value) && !ArrayBuffer.isView(value) && !(value instanceof ArrayBuffer)) {
-    const err: any = new Error('governanceBytes must be an array of byte values');
+    const err: any = new Error('governanceBytes must be an array of byte values or governanceBytesBase64 must be a base64 string');
     err.statusCode = 400;
     err.details = [{ field: 'governanceBytes', error: err.message }];
     throw err;
