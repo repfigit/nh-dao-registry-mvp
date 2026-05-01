@@ -33,6 +33,7 @@
     "hardhat": "^2.22.0"
   },
   "optionalDependencies": {
-    "@ardrive/turbo-sdk": "^1.41.2"
+    "@ardrive/turbo-sdk": "^1.41.2",
+    "utf-8-validate": "^5.0.10"
   }
 }
