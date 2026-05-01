@@ -150,11 +150,11 @@ Confirm:
 Run after unclean shutdowns or anchor RPC incidents:
 
 ```bash
-node scripts/reanchor.js --dry-run
-node scripts/reanchor.js
+npm exec tsx scripts/reanchor.ts --dry-run
+npm exec tsx scripts/reanchor.ts
 ```
 
-Do not run `scripts/reanchor.js` concurrently with active filing traffic in the MVP deployment.
+Do not run `scripts/reanchor.ts` concurrently with active filing traffic in the MVP deployment.
 
 ### Backup
 
@@ -178,7 +178,7 @@ Recommended cadence for MVP:
 3. Start the app.
 4. Run `/readyz`.
 5. Run `/api/verify/<registryId>` for a representative record.
-6. Run `node scripts/reanchor.js --dry-run` to identify unfinished anchors.
+6. Run `npm exec tsx scripts/reanchor.ts --dry-run` to identify unfinished anchors.
 
 ## Known MVP Limitations
 

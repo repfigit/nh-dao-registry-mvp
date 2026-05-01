@@ -4,14 +4,14 @@ A walkthrough of the modules in `src/` and how a filing flows through them.
 
 ## Modules
 
-`src/canonicalize.js`
+`src/canonicalize.ts`
 RFC 8785 JSON Canonicalization Scheme. Sorts object keys by Unicode code
 unit order, serializes values with JSON.stringify, returns a deterministic
 UTF-8 string. The hash that goes on chain is computed over the output of
 this function. Without canonicalization, two semantically identical
 documents could hash to different values.
 
-`src/crypto.js`
+`src/crypto.ts`
 Ed25519 keypair generation, persistence, and detached
 `JsonWebSignature2020`. The signing input is `<protected_header_b64url>.`
 followed by the canonicalized payload bytes. The signature is base64url
@@ -20,7 +20,7 @@ middle segment marks it as detached). Verification recomputes the
 signing input and uses Ed25519 verify against the JWK in the document's
 `verificationMethod`.
 
-`src/validation.js`
+`src/validation.ts`
 Registry-enforced filing invariants:
 
 - DAO name MUST end in `DAO` or `LAO`. RSA 301-B:2, III.
@@ -36,14 +36,14 @@ Plus shape checks for CAIP-2 chain IDs and EVM addresses on smart
 contract entries. The browser duplicates these checks; the server-side
 checks here are authoritative.
 
-`src/compliance.js`
+`src/compliance.ts`
 Normalizes the RSA 301-B MVP evidence checklist into a stable
 `evidence-submitted` record with `legalStatus: "not-determined"`. It
 validates public URL evidence, registered domain shape, EVM public address
 shape, lifecycle status, and required boolean attestations. This is
 evidence-backed intake validation, not legal certification.
 
-`src/didweb.js`
+`src/didweb.ts`
 Builders for the two DID documents. Each document carries a single
 `verificationMethod` (the registry's controller key, with the registry
 `did:web:<host>` DID as the controller). Service endpoints for the DAO document include
@@ -60,7 +60,7 @@ document carries `registeredAgent.physicalAddress` (structured),
 hashing. This is what allows us to add anchors after signing without
 invalidating the signature.
 
-`src/ipfs.js`
+`src/ipfs.ts`
 Two-mode IPFS pinning. Always computes a real CIDv1 (sha2-256 multihash,
 raw codec) from the bytes and saves them locally to `data/blobs/`. If
 `ARWEAVE_JWK` is set, it also signs and posts the same bytes as an Arweave
@@ -69,7 +69,7 @@ what the verifier reads in CI; Arweave is the public durability mirror and is
 independently hash-checked by the verifier when an Arweave endpoint is present. The
 mandatory-pin rule is enforced here: there is no "skip pinning" path.
 
-`src/anchor.js`
+`src/anchor.ts`
 Polygon Amoy chain anchor via ethers v6. Calls
 `DAORegistryAnchor.anchor(registryId, kind, version, contentHash)` and
 returns the transaction details. `KIND.DAO = 0`, `KIND.AGENT = 1`. A
@@ -81,14 +81,14 @@ out-of-order anchors revert. Transient RPC failures retry with
 exponential backoff (`ANCHOR_MAX_RETRIES`, `ANCHOR_BASE_DELAY_MS`);
 permanent contract reverts are surfaced immediately.
 
-`src/resolver.js`
+`src/resolver.ts`
 `did:web` resolver. `did:web:host` resolves to
 `https://host/.well-known/did.json`; `did:web:host:dao:<id>` resolves to
 `https://host/dao/<id>/did.json`. Validates the resolved document's `id`
 matches the DID that was requested. Falls through to `http://` for
 localhost (the documented exception).
 
-`src/verifier.js`
+`src/verifier.ts`
 End-to-end verification. Resolves the DAO DID, resolves the agent DID
 from the DAO's `alsoKnownAs`, verifies both detached JWS signatures
 against the public keys in their `verificationMethod` blocks, checks
@@ -98,13 +98,13 @@ the IPFS-pinned governance bytes to confirm they hash to the
 `contentHash` in the DAO document's `DAOGovernanceDocument` service
 entry. Returns a structured report with one entry per check.
 
-`src/store.js`
+`src/store.ts`
 Filesystem-backed record store. Each filing produces
 `data/records/<registryId>/{dao.json,agent.json,meta.json,governance.bin}`.
 The Express server reads these to serve `did:web` URLs and the inspector
 view. Replace with a real database for production.
 
-`src/publication.js`
+`src/publication.ts`
 The orchestrator. Validates the input, atomically reserves a unique
 registry directory (so two concurrent filings cannot collide), pins the
 governance bytes (with a configurable size cap), builds both DID
@@ -116,10 +116,10 @@ caller. `meta.compliance` carries the normalized RSA 301-B MVP evidence.
 Non-fatal issues (chain anchor disabled, public IPFS pin
 failed, CID mismatch) appear in the `warnings` array rather than as
 exceptions. v0.6 hardcodes the initial version to 1; the contract
-already supports update workflows but `publication.js` does not yet
+already supports update workflows but `publication.ts` does not yet
 expose a re-filing path.
 
-`src/server.js`
+`src/server.ts`
 Express server. Routes:
 
 - `GET /` filing UI

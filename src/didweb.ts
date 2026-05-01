@@ -75,7 +75,7 @@ export function buildDaoDocument(opts) {
 
   const id = daoDid(host, registryId);
 
-  const services = [
+  const services: any[] = [
     { id: `${id}#agent`,      type: 'RegisteredAgent',       serviceEndpoint: agentDidStr },
     {
       id: `${id}#governance`,

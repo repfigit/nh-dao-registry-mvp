@@ -109,16 +109,16 @@ export function validateContract(c) {
   return { ok: true, value: { chainId: chain.toLowerCase(), address: addr } };
 }
 
-export function validateFiling(input) {
-  const errors = [];
-  const out = {};
+export function validateFiling(input: any) {
+  const errors: any[] = [];
+  const out: any = {};
 
   for (const [field, fn] of [
     ['daoName',      validateDaoName],
     ['agentName',    validateAgentName],
     ['agentAddress', validateAgentAddress],
     ['agentEmail',   validateAgentEmail],
-  ]) {
+  ] as Array<[string, (value: any) => any]>) {
     const r = fn(input[field]);
     if (!r.ok) errors.push({ field, error: r.error });
     else out[field] = r.value;

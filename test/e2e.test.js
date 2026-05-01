@@ -69,7 +69,7 @@ let server;
 let baseUrl;
 
 async function startServer() {
-  const { app } = await import('../src/server.js');
+  const { app } = await import('../src/server.ts');
   return new Promise((resolve, reject) => {
     const s = http.createServer(app);
     s.on('error', reject);
@@ -582,7 +582,7 @@ describe('NH DAO Registry MVP, end-to-end', () => {
 
 describe('verifier shape checks', () => {
   it('parseDaoDid rejects malformed DIDs', async () => {
-    const { parseDaoDid } = await import('../src/verifier.js');
+    const { parseDaoDid } = await import('../src/verifier.ts');
     assert.throws(() => parseDaoDid('not-a-did'),                       /not a did:web/);
     assert.throws(() => parseDaoDid('did:web:host'),                    /lacks dao\/agent/);
     assert.throws(() => parseDaoDid('did:web:host:other:foo'),          /expected dao\/agent/);
@@ -592,7 +592,7 @@ describe('verifier shape checks', () => {
   });
 
   it('validateDocumentShape catches missing fields', async () => {
-    const { validateDocumentShape } = await import('../src/verifier.js');
+    const { validateDocumentShape } = await import('../src/verifier.ts');
     assert.match(validateDocumentShape(null,        'dao'),   /not an object/);
     assert.match(validateDocumentShape({},          'dao'),   /doc.id is missing/);
     assert.match(validateDocumentShape({ id:'did:web:x', '@context':'foo' }, 'dao'), /@context/);
@@ -604,7 +604,7 @@ describe('verifier shape checks', () => {
   });
 
   it('verifyDetachedJws rejects unknown critical headers (RFC 7515 §4.1.11)', async () => {
-    const { generateKeyPair, verifyDetachedJws, b64uEncode, JWS_DOMAIN } = await import('../src/crypto.js');
+    const { generateKeyPair, verifyDetachedJws, b64uEncode, JWS_DOMAIN } = await import('../src/crypto.ts');
     const { ed25519 } = await import('@noble/curves/ed25519');
     const kp = generateKeyPair();
     const enc = (s) => new TextEncoder().encode(s);
@@ -621,7 +621,7 @@ describe('verifier shape checks', () => {
   });
 
   it('verifyDetachedJws rejects malformed crit (not an array)', async () => {
-    const { generateKeyPair, verifyDetachedJws, b64uEncode, JWS_DOMAIN } = await import('../src/crypto.js');
+    const { generateKeyPair, verifyDetachedJws, b64uEncode, JWS_DOMAIN } = await import('../src/crypto.ts');
     const { ed25519 } = await import('@noble/curves/ed25519');
     const kp = generateKeyPair();
     const enc = (s) => new TextEncoder().encode(s);
@@ -637,7 +637,7 @@ describe('verifier shape checks', () => {
   });
 
   it('verifyDocumentSignature rejects unaccepted proofPurpose', async () => {
-    const { verifyDocumentSignature } = await import('../src/verifier.js');
+    const { verifyDocumentSignature } = await import('../src/verifier.ts');
     const fakeDoc = {
       id: 'did:web:x:dao:y',
       proof: {
@@ -656,7 +656,7 @@ describe('verifier shape checks', () => {
 
 describe('resolver Content-Type check', () => {
   it('rejects responses with the wrong Content-Type', async () => {
-    const { resolve, ResolutionError } = await import('../src/resolver.js');
+    const { resolve, ResolutionError } = await import('../src/resolver.ts');
     // Spin up a one-off server that serves valid-looking JSON with a bogus
     // content-type. The resolver should refuse it.
     const bogus = http.createServer((req, res) => {
@@ -687,7 +687,7 @@ describe('filing auth', () => {
     process.env.FILING_API_KEY = KEY;
 
     // Re-import to pick up new env (modules cache; reset by query string).
-    const { app } = await import('../src/server.js?auth=1');
+    const { app } = await import('../src/server.ts?auth=1');
     authedServer = http.createServer(app);
     await new Promise(r => authedServer.listen(authedPort, '127.0.0.1', r));
     authedBase = `http://127.0.0.1:${authedPort}`;
@@ -746,7 +746,7 @@ describe('filing auth', () => {
 
 describe('IPFS pin (local fallback)', () => {
   it('reports publicPinStatus as not-configured when Arweave env is missing', async () => {
-    const { pin } = await import('../src/ipfs.js');
+    const { pin } = await import('../src/ipfs.ts');
     const bytes = new TextEncoder().encode('hello-ipfs');
     const result = await pin(bytes, 'hello.txt');
     assert.match(result.cid, /^bafk/);
@@ -757,7 +757,7 @@ describe('IPFS pin (local fallback)', () => {
   });
 
   it('reports a failed publicPinStatus for invalid Arweave wallet JSON', async () => {
-    const { pin } = await import('../src/ipfs.js');
+    const { pin } = await import('../src/ipfs.ts');
     process.env.ARWEAVE_JWK = 'not json';
     const bytes = new TextEncoder().encode('hello-arweave');
     const result = await pin(bytes, 'hello.txt');
@@ -811,7 +811,7 @@ describe('CONTROLLER_PRIVATE_KEY env-var path', () => {
     process.env.PORT = String(basePort);
     process.env.REGISTRY_HOST = `localhost:${basePort}`;
 
-    const { app } = await import('../src/server.js?envkey=1');
+    const { app } = await import('../src/server.ts?envkey=1');
     s = http.createServer(app);
     await new Promise(r => s.listen(basePort, '127.0.0.1', r));
     baseUrlEnv = `http://127.0.0.1:${basePort}`;
@@ -855,13 +855,13 @@ describe('CONTROLLER_PRIVATE_KEY env-var path', () => {
     });
     assert.equal(r.status, 200);
 
-    const { verifyDocumentSignature } = await import('../src/verifier.js');
+    const { verifyDocumentSignature } = await import('../src/verifier.ts');
     const sig = verifyDocumentSignature(r.body.dao);
     assert.equal(sig.ok, true, sig.detail);
   });
 
   it('rejects malformed CONTROLLER_PRIVATE_KEY', async () => {
-    const { loadKeyPairFromEnv } = await import('../src/crypto.js');
+    const { loadKeyPairFromEnv } = await import('../src/crypto.ts');
     const previous = process.env.CONTROLLER_PRIVATE_KEY;
     try {
       process.env.CONTROLLER_PRIVATE_KEY = 'not-hex';
@@ -874,7 +874,7 @@ describe('CONTROLLER_PRIVATE_KEY env-var path', () => {
 
 describe('retryWithBackoff', () => {
   it('returns the first successful result without retrying', async () => {
-    const { retryWithBackoff } = await import('../src/anchor.js');
+    const { retryWithBackoff } = await import('../src/anchor.ts');
     let calls = 0;
     const { result, attempts } = await retryWithBackoff(
       async () => { calls++; return 'ok'; },
@@ -886,7 +886,7 @@ describe('retryWithBackoff', () => {
   });
 
   it('retries transient failures up to maxAttempts and succeeds', async () => {
-    const { retryWithBackoff } = await import('../src/anchor.js');
+    const { retryWithBackoff } = await import('../src/anchor.ts');
     const sleeps = [];
     let calls = 0;
     const { result, attempts } = await retryWithBackoff(
@@ -911,7 +911,7 @@ describe('retryWithBackoff', () => {
   });
 
   it('rethrows after maxAttempts when all retries fail', async () => {
-    const { retryWithBackoff } = await import('../src/anchor.js');
+    const { retryWithBackoff } = await import('../src/anchor.ts');
     let calls = 0;
     await assert.rejects(
       retryWithBackoff(
@@ -924,7 +924,7 @@ describe('retryWithBackoff', () => {
   });
 
   it('does not retry on permanent errors (early surface)', async () => {
-    const { retryWithBackoff, isPermanentAnchorError } = await import('../src/anchor.js');
+    const { retryWithBackoff, isPermanentAnchorError } = await import('../src/anchor.ts');
     let calls = 0;
     await assert.rejects(
       retryWithBackoff(
@@ -943,7 +943,7 @@ describe('retryWithBackoff', () => {
   });
 
   it('isPermanentAnchorError matches contract reverts and skips network errors', async () => {
-    const { isPermanentAnchorError } = await import('../src/anchor.js');
+    const { isPermanentAnchorError } = await import('../src/anchor.ts');
     assert.equal(isPermanentAnchorError(new Error('DAORegistryAnchor: not owner')),                true);
     assert.equal(isPermanentAnchorError(new Error('DAORegistryAnchor: version already anchored')), true);
     assert.equal(isPermanentAnchorError(new Error('DAORegistryAnchor: non-sequential version')),   true);
@@ -964,7 +964,7 @@ describe('rate limiting', () => {
     basePort = await pickFreePort();
     process.env.FILING_RATE_MAX = '2';
     process.env.FILING_RATE_WINDOW_MS = '60000';
-    const { app } = await import('../src/server.js?ratelimit=1');
+    const { app } = await import('../src/server.ts?ratelimit=1');
     s = http.createServer(app);
     await new Promise(r => s.listen(basePort, '127.0.0.1', r));
     baseUrlRl = `http://127.0.0.1:${basePort}`;

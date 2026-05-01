@@ -14,9 +14,9 @@
  * already has what we wanted).
  *
  * Usage:
- *   node scripts/reanchor.js               # sweep all records
- *   node scripts/reanchor.js <registryId>  # one specific record
- *   node scripts/reanchor.js --dry-run     # report only, no chain calls
+ *   npm exec tsx scripts/reanchor.ts               # sweep all records
+ *   npm exec tsx scripts/reanchor.ts <registryId>  # one specific record
+ *   npm exec tsx scripts/reanchor.ts --dry-run     # report only, no chain calls
  */
 
 import 'dotenv/config';

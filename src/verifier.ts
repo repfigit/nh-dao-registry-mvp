@@ -24,7 +24,7 @@ import { readLatest, KIND } from './anchor.js';
 import { readLocal } from './ipfs.js';
 import { daoDid as buildDaoDid, registryDid as buildRegistryDid } from './didweb.js';
 
-function check(name, ok, detail) {
+function check(name: string, ok: any, detail?: any) {
   return { name, ok: !!ok, detail: detail || (ok ? 'ok' : 'failed') };
 }
 
@@ -204,7 +204,7 @@ export async function verifyGovernanceArweave(daoDoc) {
  * Run the full verification flow for a DAO registryId.
  * Pass a custom resolver options object to override scheme (e.g. for tests).
  */
-export async function verifyDao(daoIdOrDid, { scheme, host } = {}) {
+export async function verifyDao(daoIdOrDid: string, { scheme, host }: { scheme?: string; host?: string } = {}) {
   const did = daoIdOrDid.startsWith('did:web:')
     ? daoIdOrDid
     : buildDaoDid(host, daoIdOrDid);

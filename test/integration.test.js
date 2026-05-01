@@ -183,7 +183,7 @@ describe('integration: real chain', () => {
 
     // 4. Start the registry server. Cache-bust the import so this is a
     //    fresh module load with the chain env in place.
-    const { app } = await import(`../src/server.js?integration=${Date.now()}`);
+    const { app } = await import(`../src/server.ts?integration=${Date.now()}`);
     serverHttp = http.createServer(app);
     await new Promise(r => serverHttp.listen(registryPort, '127.0.0.1', r));
     baseUrl = `http://localhost:${registryPort}`;

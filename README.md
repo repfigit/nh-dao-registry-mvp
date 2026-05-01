@@ -39,22 +39,22 @@ This MVP is also meant to teach the full stack to a non-specialist reviewer:
 
 - The browser UI in `public/` is the intake counter. It helps the user catch
   obvious input mistakes before submission.
-- The Express API in `src/server.js` is the service desk. It receives filings,
+- The Express API in `src/server.ts` is the service desk. It receives filings,
   serves DID documents, lists records, and exposes verification reports.
-- `src/validation.js` and `src/compliance.js` are the rule checkers. They
+- `src/validation.ts` and `src/compliance.ts` are the rule checkers. They
   repeat the important checks on the server, where users cannot bypass them.
-- `src/publication.js` is the publishing line. It pins governance bytes, builds
+- `src/publication.ts` is the publishing line. It pins governance bytes, builds
   the DAO and registered-agent DID documents, signs them, saves them, and
   attempts chain anchoring.
-- `src/store.js` is the MVP record cabinet. In this reference deployment it is
+- `src/store.ts` is the MVP record cabinet. In this reference deployment it is
   a filesystem under `data/`; a hardened deployment would replace this with a
   database/object store.
-- `src/ipfs.js` creates content-addressed governance bytes. Even when public
+- `src/ipfs.ts` creates content-addressed governance bytes. Even when public
   Arweave persistence is not configured, the CID and local blob let the
   verifier prove the bytes have not changed.
 - `contracts/DAORegistryAnchor.sol` is the public notary. It records a hash of
   each DID document version on Polygon Amoy.
-- `src/verifier.js` is the independent auditor. It resolves the public DID
+- `src/verifier.ts` is the independent auditor. It resolves the public DID
   URLs, verifies signatures, checks DAO-agent links, recomputes hashes, and
   compares them with IPFS and the chain anchor.
 
@@ -127,7 +127,7 @@ Open http://localhost:3000 and file a registration. After filing:
 
 ```
 contracts/   Solidity DAORegistryAnchor + Hardhat config
-scripts/     deploy.cjs (Hardhat), verify-record.js (CLI verifier)
+scripts/     deploy.cjs (Hardhat), verify-record.ts (CLI verifier)
 src/         server, publication, didweb, crypto, canonicalize, ipfs,
              anchor, resolver, verifier, validation, compliance, store
 public/      filing UI (index.html, app.js) and inspector (inspect.html)
@@ -158,7 +158,7 @@ emission.
 ## CLI verifier
 
 ```
-node scripts/verify-record.js granite-state-governance-dao
+npm run verify -- granite-state-governance-dao
 ```
 
 Resolves the DAO DID, fetches the agent, verifies both signatures, checks
@@ -186,9 +186,9 @@ rather than orphaning an on-chain anchor that nothing locally knows about.
 To recover unanchored or partially-anchored records, run:
 
 ```
-node scripts/reanchor.js              # sweep all records
-node scripts/reanchor.js <registryId> # one specific record
-node scripts/reanchor.js --dry-run    # report only, no chain calls
+npm exec tsx scripts/reanchor.ts              # sweep all records
+npm exec tsx scripts/reanchor.ts <registryId> # one specific record
+npm exec tsx scripts/reanchor.ts --dry-run    # report only, no chain calls
 ```
 
 The sweep is idempotent: a record whose anchor already lives on chain
@@ -197,7 +197,7 @@ is treated as success without a duplicate write. Operationally, run the
 sweep after any unclean shutdown of the registry server, or as a periodic
 cron in production.
 
-**Concurrency caveat (single-process MVP):** do not run `reanchor.js`
+**Concurrency caveat (single-process MVP):** do not run `reanchor.ts`
 concurrently with active filing requests against the same `data/records/`
 directory. Both paths write `meta.json`, and there is no inter-process
 lock yet. The contract's version monotonicity is the only safety net

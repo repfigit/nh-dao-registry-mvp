@@ -53,12 +53,12 @@ function deriveRegistryId(daoName, salt) {
   return base;
 }
 
-function stripMutableEvidence(document) {
+function stripMutableEvidence(document: any) {
   const { proof, anchors, ...unsigned } = document;
   return unsigned;
 }
 
-function updateRegistryRecordService(document, status, legalStatus) {
+function updateRegistryRecordService(document: any, status: string, legalStatus: string) {
   return {
     ...document,
     service: (document.service || []).map(service => {
@@ -72,7 +72,7 @@ function updateRegistryRecordService(document, status, legalStatus) {
   };
 }
 
-function appendPriorVersion(meta) {
+function appendPriorVersion(meta: any) {
   const prior = {
     version: meta.version || INITIAL_VERSION,
     daoHash: meta.daoHash || null,
@@ -110,15 +110,15 @@ function reserveUniqueId(daoName) {
  * @param {object} input - { daoName, agentName, agentAddress, agentEmail, govUrl?, sourceUrl?, guiUrl?, contracts?, governanceBytes? }
  * @param {object} ctx - { host, scheme, controllerKeyPath }
  */
-export async function file(input, ctx) {
+export async function file(input: any, ctx: any) {
   const v = validateFiling(input);
   if (!v.ok) {
-    const err = new Error('validation failed');
+    const err: any = new Error('validation failed');
     err.statusCode = 400;
     err.details = v.errors;
     throw err;
   }
-  const filing = v.value;
+  const filing: any = v.value;
 
   const { host, scheme = 'https', controllerKeyPath = 'data/keys/controller.json' } = ctx;
   const controllerDid = registryDid(host);
@@ -145,7 +145,7 @@ export async function file(input, ctx) {
         }));
     const cap = maxGovernanceBytes();
     if (governanceBytes.length > cap) {
-      const err = new Error(`governance bytes too large: ${governanceBytes.length} > ${cap} (set MAX_GOVERNANCE_BYTES to override)`);
+      const err: any = new Error(`governance bytes too large: ${governanceBytes.length} > ${cap} (set MAX_GOVERNANCE_BYTES to override)`);
       err.statusCode = 400;
       err.details = [{ field: 'governanceBytes', error: err.message }];
       throw err;
@@ -332,10 +332,10 @@ export async function file(input, ctx) {
  * documents move to the next sequential version and are signed+anchored as
  * the approved public record.
  */
-export async function issueApprovedRegistration(registryId, ctx, decision = {}) {
+export async function issueApprovedRegistration(registryId: string, ctx: any, decision: any = {}) {
   const record = loadRecord(registryId);
   if (!record) {
-    const err = new Error('record not found');
+    const err: any = new Error('record not found');
     err.statusCode = 404;
     throw err;
   }
@@ -460,17 +460,17 @@ export async function issueApprovedRegistration(registryId, ctx, decision = {}) 
   return { registryId, dao: daoDoc, agent: agentDoc, meta, warnings: meta.warnings };
 }
 
-function governanceBytesFromInput(value) {
+function governanceBytesFromInput(value: any) {
   if (!Array.isArray(value) && !ArrayBuffer.isView(value) && !(value instanceof ArrayBuffer)) {
-    const err = new Error('governanceBytes must be an array of byte values');
+    const err: any = new Error('governanceBytes must be an array of byte values');
     err.statusCode = 400;
     err.details = [{ field: 'governanceBytes', error: err.message }];
     throw err;
   }
-  const values = value instanceof ArrayBuffer ? new Uint8Array(value) : Array.from(value);
+  const values: any[] | Uint8Array = value instanceof ArrayBuffer ? new Uint8Array(value) : Array.from(value as any);
   const invalid = values.findIndex(v => !Number.isInteger(v) || v < 0 || v > 255);
   if (invalid !== -1) {
-    const err = new Error('governanceBytes must contain only integers from 0 to 255');
+    const err: any = new Error('governanceBytes must contain only integers from 0 to 255');
     err.statusCode = 400;
     err.details = [{ field: `governanceBytes[${invalid}]`, error: err.message }];
     throw err;

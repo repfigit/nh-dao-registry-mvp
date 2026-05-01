@@ -61,7 +61,7 @@ export function releaseRegistryId(registryId) {
   }
 }
 
-export function saveRecord(registryId, { dao, agent, meta, governanceBytes }) {
+export function saveRecord(registryId: string, { dao, agent, meta, governanceBytes }: { dao: any; agent: any; meta: any; governanceBytes?: any }) {
   const d = dir(registryId);
   fs.mkdirSync(d, { recursive: true });
   writeJsonAtomic(path.join(d, 'dao.json'), dao);

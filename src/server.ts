@@ -158,7 +158,7 @@ function ensureAdmin(meta) {
   };
 }
 
-function summarizeRecord(id, meta) {
+function summarizeRecord(id: string, meta: any) {
   const admin = ensureAdmin(meta);
   return {
     registryId: id,
@@ -175,7 +175,7 @@ function summarizeRecord(id, meta) {
   };
 }
 
-function publicRecord(record) {
+function publicRecord(record: any) {
   const { meta } = record;
   const admin = ensureAdmin(meta);
   return {
@@ -219,10 +219,10 @@ function publicRecord(record) {
   };
 }
 
-function applyAdminAction(registryId, meta, action, body = {}) {
+function applyAdminAction(registryId: string, meta: any, action: string, body: any = {}) {
   const targetStatus = ADMIN_ACTIONS.get(action) || body.reviewStatus;
   if (!ADMIN_STATUSES.has(targetStatus)) {
-    const err = new Error('unsupported review status');
+    const err: any = new Error('unsupported review status');
     err.statusCode = 400;
     throw err;
   }
@@ -231,7 +231,7 @@ function applyAdminAction(registryId, meta, action, body = {}) {
   const reason = String(body.reason || '').trim().slice(0, 2000);
   const note = String(body.note || '').trim().slice(0, 4000);
   if (['approve', 'deny', 'request-correction', 'revoke'].includes(action) && !reason) {
-    const err = new Error('decision reason is required for this admin action');
+    const err: any = new Error('decision reason is required for this admin action');
     err.statusCode = 400;
     throw err;
   }
@@ -385,7 +385,7 @@ app.post('/api/admin/records/:id/:action', requireAdminAuth, async (req, res) =>
     return res.status(400).json({ error: 'unsupported admin action' });
   }
   try {
-    const result = applyAdminAction(req.params.id, meta, action, req.body || {});
+    const result: any = applyAdminAction(req.params.id, meta, action, req.body || {});
     if (action === 'approve') {
       const issued = await issueApprovedRegistration(req.params.id, {
         host: HOST, scheme: SCHEME, controllerKeyPath: CONTROLLER_KEY_PATH,

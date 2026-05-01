@@ -35,7 +35,7 @@ function listFiles(dir) {
 
 function exportRecord(dir) {
   const registryId = path.basename(dir);
-  const record = { registryId };
+  const record: any = { registryId };
   for (const name of ['dao.json', 'agent.json', 'meta.json']) {
     const file = path.join(dir, name);
     if (fs.existsSync(file)) record[name.replace('.json', '')] = readJson(file);

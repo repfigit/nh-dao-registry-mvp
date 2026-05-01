@@ -4,8 +4,8 @@
  * the full verification flow, and prints the result.
  *
  * Usage:
- *   node scripts/verify-record.js <registryId>
- *   node scripts/verify-record.js did:web:nhdaoregistry.example:dao:<id>
+ *   npm run verify -- <registryId>
+ *   npm run verify -- did:web:nhdaoregistry.example:dao:<id>
  */
 
 import 'dotenv/config';
@@ -14,7 +14,7 @@ import { verifyDao } from '../src/verifier.js';
 async function main() {
   const arg = process.argv[2];
   if (!arg) {
-    console.error('Usage: node scripts/verify-record.js <registryId | did:web:...>');
+    console.error('Usage: npm run verify -- <registryId | did:web:...>');
     process.exit(2);
   }
   const host = process.env.REGISTRY_HOST || 'localhost:3000';

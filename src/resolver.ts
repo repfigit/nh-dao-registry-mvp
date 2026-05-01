@@ -16,14 +16,16 @@
  */
 
 export class ResolutionError extends Error {
-  constructor(message, did) {
+  did: string;
+
+  constructor(message: string, did: string) {
     super(message);
     this.did = did;
   }
 }
 
 /** Convert a did:web identifier to its resolution URL. */
-export function didWebToUrl(did, { scheme } = {}) {
+export function didWebToUrl(did: string, { scheme }: { scheme?: string } = {}) {
   if (!did.startsWith('did:web:')) {
     throw new ResolutionError(`not a did:web identifier: ${did}`, did);
   }
@@ -55,7 +57,7 @@ function isAcceptedMediaType(contentType) {
 }
 
 /** Fetch and parse a DID document. */
-export async function resolve(did, opts = {}) {
+export async function resolve(did: string, opts: { scheme?: string } = {}) {
   const url = didWebToUrl(did, opts);
   const res = await fetch(url, { headers: { Accept: 'application/did+json, application/json' } });
   if (!res.ok) {

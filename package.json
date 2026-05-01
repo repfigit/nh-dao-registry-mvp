@@ -8,19 +8,21 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "hardhat test test/DAORegistryAnchor.test.cjs && node --test test/e2e.test.js",
+    "start": "node dist/src/server.js",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "hardhat test test/DAORegistryAnchor.test.cjs && node --import tsx --test test/e2e.test.js",
     "test:contract": "hardhat test test/DAORegistryAnchor.test.cjs",
-    "test:e2e": "node --test test/e2e.test.js",
-    "test:integration": "hardhat compile && node --test test/integration.test.js",
+    "test:e2e": "node --import tsx --test test/e2e.test.js",
+    "test:integration": "hardhat compile && node --import tsx --test test/integration.test.js",
     "compile": "hardhat compile",
     "deploy:amoy": "hardhat run scripts/deploy.cjs --network amoy",
     "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
     "node:local": "hardhat node",
-    "verify": "node scripts/verify-record.js",
-    "balances": "node scripts/balances.js",
-    "backup": "node scripts/backup.js"
+    "verify": "tsx scripts/verify-record.ts",
+    "balances": "tsx scripts/balances.ts",
+    "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
     "@noble/curves": "^1.4.0",
@@ -33,6 +35,10 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.0"
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "hardhat": "^2.22.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }

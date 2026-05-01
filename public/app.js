@@ -36,6 +36,36 @@ const ATTESTATION_FIELDS = [
   'legalRepresentativeAuthorized',
 ];
 
+const WIZARD_STEPS = [
+  {
+    title: 'DAO identity',
+    help: 'Enter the public DAO name, bylaws/governance link, source code link, and app link.',
+    fields: ['daoName', 'govUrl', 'sourceUrl', 'guiUrl'],
+  },
+  {
+    title: 'Registered agent',
+    help: 'Enter the agent contact information and a physical New Hampshire street address.',
+    fields: ['agentName', 'agentEmail', 'agentAddress'],
+  },
+  {
+    title: 'Contracts',
+    help: 'Add at least one chain ID and EVM contract address for the DAO.',
+    fields: [],
+  },
+  {
+    title: 'Evidence',
+    help: 'Supply the public evidence links and check every required attestation.',
+    fields: ['registeredDomain', 'publicAddress', 'qaUrl', 'communicationsUrl', 'internalDisputeResolutionUrl', 'thirdPartyDisputeResolutionUrl', 'legalRepresentativeAuthorizationUrl'],
+  },
+  {
+    title: 'Review and file',
+    help: 'Review the full-stack effect of the filing, then submit it to the API.',
+    fields: [],
+  },
+];
+
+let currentStep = 0;
+
 function setNote(id, ok, msg) {
   const el = $(id);
   el.textContent = msg;
@@ -68,6 +98,7 @@ function checkAll() {
   const ok = okName && okAddr && okBasic && okContracts && okUrls && okCompliance;
   $('fileBtn').disabled = !ok;
   $('status').textContent = ok ? 'Ready to file.' : 'Fill required fields, evidence URLs, attestations, and contract rows.';
+  updateWizardState();
 }
 
 function isHttpUrl(raw) {
@@ -130,6 +161,105 @@ function collectContracts() {
     chainId: r.querySelector('.c-chain').value.trim(),
     address: r.querySelector('.c-addr').value.trim(),
   })).filter(c => c.chainId || c.address);
+}
+
+/* ---------- wizard ---------- */
+
+function stepIsComplete(index) {
+  if (index === 0) {
+    return NAME_RX.test($('daoName').value.trim())
+      && ['govUrl', 'sourceUrl', 'guiUrl'].every(id => isHttpUrl($(id).value));
+  }
+  if (index === 1) {
+    const addr = $('agentAddress').value.trim();
+    return Boolean($('agentName').value.trim())
+      && Boolean($('agentEmail').value.trim())
+      && !PO_BOX_RX.test(addr)
+      && NH_RX.test(addr)
+      && /\d/.test(addr);
+  }
+  if (index === 2) {
+    const contracts = collectContracts();
+    return contracts.length > 0 && contracts.every(c => CAIP2_RX.test(c.chainId) && EVM_ADDR_RX.test(c.address));
+  }
+  if (index === 3) {
+    return isPublicDomain($('registeredDomain').value.trim())
+      && EVM_ADDR_RX.test($('publicAddress').value.trim())
+      && REQUIRED_URL_FIELDS.filter(id => id !== 'govUrl' && id !== 'sourceUrl' && id !== 'guiUrl').every(id => isHttpUrl($(id).value))
+      && ATTESTATION_FIELDS.every(field => $(`att-${field}`).checked);
+  }
+  return WIZARD_STEPS.slice(0, 4).every((_, i) => stepIsComplete(i));
+}
+
+function stepIssue(index) {
+  if (stepIsComplete(index)) return '';
+  if (index === 0) return 'Complete the DAO name and use public http(s) URLs for governance, source code, and the DAO user interface.';
+  if (index === 1) return 'Complete the registered agent name, email, and a physical New Hampshire street address.';
+  if (index === 2) return 'Add at least one contract row with a CAIP-2 chain ID and a 40-byte EVM address.';
+  if (index === 3) return 'Complete every evidence URL, use a public registered domain, and check every attestation.';
+  return 'Complete the previous steps before filing.';
+}
+
+function buildWizardNav() {
+  const nav = $('wizardSteps');
+  nav.replaceChildren();
+  WIZARD_STEPS.forEach((step, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'wizard-dot';
+    button.dataset.stepDot = String(index);
+    button.addEventListener('click', () => {
+      currentStep = index;
+      renderWizard();
+    });
+    const num = document.createElement('span');
+    num.className = 'wizard-index';
+    const inner = document.createElement('span');
+    inner.textContent = String(index + 1);
+    num.appendChild(inner);
+    const label = document.createElement('span');
+    label.textContent = step.title;
+    button.append(num, label);
+    nav.appendChild(button);
+  });
+}
+
+function updateWizardState() {
+  document.querySelectorAll('[data-step-dot]').forEach(button => {
+    const index = Number(button.dataset.stepDot);
+    button.dataset.complete = stepIsComplete(index) ? 'true' : 'false';
+    button.setAttribute('aria-current', index === currentStep ? 'step' : 'false');
+  });
+  if ($('stepHelp')) {
+    $('stepHelp').textContent = stepIssue(currentStep) || WIZARD_STEPS[currentStep].help;
+  }
+}
+
+function renderWizard() {
+  document.querySelectorAll('.wizard-step').forEach(step => {
+    step.hidden = Number(step.dataset.step) !== currentStep;
+  });
+  $('stepSummary').textContent = `Step ${currentStep + 1} of ${WIZARD_STEPS.length}`;
+  $('prevStep').disabled = currentStep === 0;
+  $('prevStep').classList.toggle('opacity-50', currentStep === 0);
+  $('nextStep').hidden = currentStep === WIZARD_STEPS.length - 1;
+  $('fileBtn').classList.toggle('hidden', currentStep !== WIZARD_STEPS.length - 1);
+  updateWizardState();
+}
+
+function nextWizardStep() {
+  const issue = stepIssue(currentStep);
+  if (issue) {
+    $('status').textContent = issue;
+    return;
+  }
+  currentStep = Math.min(currentStep + 1, WIZARD_STEPS.length - 1);
+  renderWizard();
+}
+
+function prevWizardStep() {
+  currentStep = Math.max(currentStep - 1, 0);
+  renderWizard();
 }
 
 /* ---------- API key (Bearer token) ---------- */
@@ -201,10 +331,11 @@ async function submit(e) {
   }
   if (res.status === 401) {
     $('apiKeySection').open = true;
+    $('apiKeySection').classList.remove('hidden');
     const hasKey = !!$('apiKey').value.trim();
     $('status').textContent = hasKey
-      ? 'Server rejected the API key (401). Check the Bearer token and try again.'
-      : 'This server requires an API key. Set the Bearer token above and try again.';
+      ? 'The server rejected the developer filing token. Check the token and try again.'
+      : 'This server is locked for API testing. Open “Developer filing token,” enter the configured token, and try again.';
     $('apiKey').focus();
     $('fileBtn').disabled = false;
     return;
@@ -325,6 +456,8 @@ document.addEventListener('DOMContentLoaded', () => {
   ATTESTATION_FIELDS.forEach(field => $(`att-${field}`).addEventListener('change', checkAll));
   $('addContract').addEventListener('click', () => addContractRow());
   $('form').addEventListener('submit', submit);
+  $('nextStep').addEventListener('click', nextWizardStep);
+  $('prevStep').addEventListener('click', prevWizardStep);
 
   // Restore the API key from sessionStorage; persist on edit. If a key is
   // already set, expand the section so the operator can see it's in effect.
@@ -332,9 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (stored) {
     $('apiKey').value = stored;
     $('apiKeySection').open = true;
+    $('apiKeySection').classList.remove('hidden');
   }
   $('apiKey').addEventListener('input', () => saveApiKey($('apiKey').value.trim()));
 
   // Seed with one example contract row.
   addContractRow({ chainId: 'eip155:1', address: '0x0000000000000000000000000000000000000000' });
+  buildWizardNav();
+  renderWizard();
 });

@@ -92,6 +92,25 @@
   .primary-btn:disabled { background:#aeb8c5; }
   .dark-btn { background:var(--nh-blue); color:#fff; border-radius:6px; }
   .dark-btn:hover { background:#062f5c; }
+  .light-btn { background:#fff; color:var(--nh-blue); border:1px solid #b9c5d2; border-radius:6px; }
+  .light-btn:hover { border-color:var(--nh-blue); background:#f8fbff; }
+  .wizard-dot {
+    display:flex; align-items:center; gap:.5rem; padding:.55rem .7rem;
+    border:1px solid var(--line); background:#fff; border-radius:6px; color:#475569;
+    font-size:.78rem; font-weight:800; text-align:left;
+  }
+  .wizard-dot[aria-current="step"] { border-color:var(--nh-blue); color:var(--nh-blue); background:#eef4fb; }
+  .wizard-dot[data-complete="true"] { border-color:#b7dfcd; background:#f2fbf7; color:#166534; }
+  .wizard-index {
+    width:1.35rem; height:1.35rem; display:grid; place-items:center; flex:none;
+    border-radius:4px; background:currentColor; color:#fff; font-size:.68rem;
+  }
+  .wizard-index span { color:#fff; }
+  .wizard-step[hidden] { display:none; }
+  .instruction-box {
+    border:1px solid #cbd8e6; background:#f8fbff; border-radius:6px; padding:.85rem;
+  }
+  .instruction-box strong { color:var(--nh-blue); }
 </style>
 </head>
 <body class="min-h-screen">
@@ -211,25 +230,47 @@
       <h2 class="text-xl font-extrabold tracking-tight text-slate-900">Enter public filing evidence</h2>
       <p class="text-sm text-slate-600 mt-1">Use the form below as the intake screen. Every required field either becomes part of the signed record or supports the registry's evidence checklist.</p>
     </div>
-    <details id="apiKeySection" class="mb-4 rounded-md border border-slate-300 bg-[#f6f8fb]">
+    <details id="apiKeySection" class="mb-4 rounded-md border border-slate-300 bg-[#f6f8fb] hidden">
       <summary class="cursor-pointer text-xs font-bold px-3 py-2 select-none text-[#083b73]">
-        API key (only required if <code>FILING_API_KEY</code> is set on the server)
+        Developer filing token
       </summary>
       <div class="px-3 pb-3 pt-1">
+        <p class="text-xs text-slate-600 mb-3">
+          This is only for local demos or API testing. Production filers would not type a token here; they would sign in, start a filing session, pay any required fee, and the server would authorize the submission behind the scenes.
+        </p>
         <label class="block">
           <span class="text-xs text-slate-600">Bearer token</span>
           <input id="apiKey" type="password" autocomplete="off" spellcheck="false"
             class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"
-            placeholder="leave blank if the server is open">
-          <p class="mt-1 text-xs text-slate-500">Stored in this tab's <code>sessionStorage</code> only — cleared when you close the tab.</p>
+            placeholder="developer token">
+          <p class="mt-1 text-xs text-slate-500">This stays in this browser tab only and clears when you close the tab.</p>
         </label>
       </div>
     </details>
 
+    <div class="mb-4 rounded-md border border-slate-300 bg-[#f6f8fb] p-3">
+      <div class="text-xs font-bold text-[#083b73]">Production filing access</div>
+      <p class="mt-1 text-xs text-slate-600">
+        In a production registry, this wizard would sit behind a filer account or official filing session. The user would sign in, create or resume a filing, and the server would authorize the final submission automatically. This MVP keeps the filing screen public so the full stack is easy to test.
+      </p>
+    </div>
+
+    <div class="mb-5 grid lg:grid-cols-[1fr_auto] gap-3 items-start">
+      <div id="wizardSteps" class="grid sm:grid-cols-2 lg:grid-cols-5 gap-2"></div>
+      <div class="text-xs text-slate-600 lg:text-right">
+        <div class="font-bold text-[#083b73]">Wizard mode</div>
+        <div id="stepSummary">Step 1 of 5</div>
+      </div>
+    </div>
+
     <form id="form" class="space-y-4">
-      <div>
+      <section class="wizard-step" data-step="0" data-title="DAO identity">
         <h3 class="text-sm section-title">DAO identity</h3>
-        <p class="text-xs text-slate-500 mt-1">Start with the public DAO name and the public artifacts that explain how it operates.</p>
+        <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
+          <p><strong>What you are doing:</strong> naming the DAO and pointing the registry to the public materials that explain the DAO's rules, code, and user interface.</p>
+          <p><strong>What the app does next:</strong> the backend will copy these references into a signed DAO DID document. The governance document is also converted into content-addressed evidence so the verifier can later prove that the bytes did not change.</p>
+          <p><strong>For this MVP:</strong> use public HTTPS URLs. Localhost, private network URLs, and placeholder links will be rejected by the server.</p>
+        </div>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <label class="block">
             <span class="text-sm font-medium">DAO name</span>
@@ -253,13 +294,18 @@
             <input id="guiUrl" type="url" required class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="https://app.example.org">
           </label>
         </div>
-      </div>
+      </section>
 
-      <div class="divider"></div>
+      <section class="wizard-step" data-step="1" data-title="Registered agent" hidden>
+        <h3 class="text-sm section-title">Registered agent</h3>
+        <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
+          <p><strong>What you are doing:</strong> identifying the person or entity that can receive official notices for the DAO.</p>
+          <p><strong>What the app does next:</strong> the backend creates a second DID document for the registered agent and links it bidirectionally to the DAO DID. That lets the verifier confirm that the DAO and agent records point to each other.</p>
+          <p><strong>Important:</strong> the address needs to be a physical New Hampshire street address. A PO box is not enough for the registry workflow.</p>
+        </div>
 
       <div class="rounded-md border border-slate-300 bg-[#f6f8fb] p-4">
-        <h3 class="text-sm section-title">Registered agent</h3>
-        <p class="text-xs text-slate-500 mt-1">This person or entity is the official contact for legal service. The address must be a physical New Hampshire street address.</p>
+        <p class="text-xs text-slate-500">This person or entity is the official contact for legal service. The address must be a physical New Hampshire street address.</p>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <label class="block">
             <span class="text-sm font-medium">Agent name</span>
@@ -280,23 +326,30 @@
           </label>
         </div>
       </div>
+      </section>
 
-      <div class="divider"></div>
-
-      <div>
+      <section class="wizard-step" data-step="2" data-title="Contracts" hidden>
         <div class="flex items-center justify-between">
           <h3 class="text-sm section-title">Smart contracts</h3>
           <button type="button" id="addContract" class="text-xs font-bold text-[#083b73] hover:text-[#b21f2d]">+ Add a contract</button>
         </div>
-        <p class="text-xs text-slate-500 mt-1">At least one public DAO contract address is required. Use a CAIP-2 chainId (e.g. <code>eip155:1</code>, <code>eip155:137</code>) plus an EVM address.</p>
+        <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
+          <p><strong>What you are doing:</strong> listing the on-chain contract addresses that represent the DAO's public system.</p>
+          <p><strong>How to enter a chain:</strong> use CAIP-2 format. Ethereum mainnet is <code>eip155:1</code>, Polygon is <code>eip155:137</code>, and Polygon Amoy testnet is <code>eip155:80002</code>.</p>
+          <p><strong>What the app does next:</strong> these contract references become services inside the DAO DID document. The MVP checks the address format but does not audit contract code.</p>
+        </div>
+        <p class="text-xs text-slate-500 mt-3">At least one public DAO contract address is required. Use a CAIP-2 chainId plus an EVM address.</p>
         <div id="contractRows" class="mt-3 space-y-2"></div>
-      </div>
+      </section>
 
-      <div class="divider"></div>
-
-      <div>
+      <section class="wizard-step" data-step="3" data-title="Evidence" hidden>
         <h3 class="text-sm section-title">RSA 301-B evidence intake</h3>
-        <p class="text-xs text-slate-500 mt-1">MVP evidence checklist for registry listing. The registry records these claims in the signed DAO DID document but does not certify statutory compliance.</p>
+        <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
+          <p><strong>What you are doing:</strong> supplying the public evidence a reviewer needs to understand the DAO's claimed compliance posture.</p>
+          <p><strong>What the app does next:</strong> the server syntax-checks every URL, confirms attestations are true, stores the normalized checklist, and embeds it in the signed DAO DID document as an <code>NHDAOComplianceChecklist</code> service.</p>
+          <p><strong>Important legal boundary:</strong> this MVP records submitted evidence. It does not certify that the DAO is legally compliant. A Secretary of State reviewer still approves, denies, or requests correction in the admin portal.</p>
+        </div>
+        <p class="text-xs text-slate-500 mt-3">MVP evidence checklist for registry listing. The registry records these claims in the signed DAO DID document but does not certify statutory compliance.</p>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <label class="block">
             <span class="text-sm font-medium">Registered domain</span>
@@ -345,15 +398,30 @@
             <label><input class="attestation mr-2" type="checkbox" id="att-legalRepresentativeAuthorized">Legal representative authority is publicly evidenced</label>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="divider"></div>
+      <section class="wizard-step" data-step="4" data-title="Review and file" hidden>
+        <h3 class="text-sm section-title">Review and file</h3>
+        <div class="instruction-box mt-2 text-xs text-slate-700 space-y-2">
+          <p><strong>What happens when you click File registration:</strong> the browser sends the form to <code>POST /api/file</code>. If this Fly deployment has <code>FILING_API_KEY</code> set, the request must include the bearer token from the API key box above.</p>
+          <p><strong>On the server:</strong> Express validates the filing, pins the governance bytes locally and to Arweave when configured, builds the DAO and registered-agent DID documents, signs both with the registry controller key, saves the record, and anchors document hashes on Polygon Amoy when configured.</p>
+          <p><strong>After filing:</strong> you can inspect the public DID documents, run verification, and use the admin portal to approve the filing. Approval issues a new signed version of the DID documents.</p>
+        </div>
 
       <div class="flex items-center justify-between flex-wrap gap-3">
         <div id="status" class="text-xs text-slate-600">Fill the required fields to enable filing.</div>
         <button id="fileBtn" type="submit" disabled class="primary-btn text-sm font-bold px-5 py-2.5">
           File registration
         </button>
+      </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <button id="prevStep" type="button" class="light-btn text-sm font-bold px-4 py-2">Back</button>
+        <div id="stepHelp" class="text-xs text-slate-500 max-w-xl text-center"></div>
+        <button id="nextStep" type="button" class="dark-btn text-sm font-bold px-4 py-2">Next</button>
       </div>
     </form>
   </section>

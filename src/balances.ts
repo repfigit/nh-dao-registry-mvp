@@ -54,7 +54,7 @@ export async function anchorSignerBalance() {
 }
 
 export async function operationalBalances() {
-  const out = {};
+  const out: any = {};
   try {
     out.arweave = await arweaveBalance();
   } catch (err) {

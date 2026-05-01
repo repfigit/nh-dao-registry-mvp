@@ -79,7 +79,7 @@ export async function pin(bytes, filename = 'governance.bin') {
   let arweave = null;
   // Status describes the public-pin attempt. State is one of:
   //   'not-configured' | 'pinned' | 'failed'
-  let publicPinStatus = { state: 'not-configured', provider: 'arweave', detail: 'set ARWEAVE_JWK for Arweave public persistence' };
+  let publicPinStatus: any = { state: 'not-configured', provider: 'arweave', detail: 'set ARWEAVE_JWK for Arweave public persistence' };
   if (process.env.ARWEAVE_JWK) {
     try {
       arweave = await uploadViaArweave(bytes, filename, cidStr);

@@ -98,7 +98,7 @@ This work should be designed separately from DID document signing.
 Replace the filesystem store with a storage abstraction before introducing Postgres:
 
 ```text
-src/store.js
+src/store.ts
   FileStore       current MVP implementation
   PostgresStore   production implementation
 ```
