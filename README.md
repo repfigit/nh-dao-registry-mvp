@@ -1,8 +1,9 @@
 # NH DAO Registry, reference implementation
 
 A working reference implementation of the NH DAO Registry POC (v0.6).
-Real cryptography. Real `did:web` hosting. Real IPFS pinning. Real Polygon
-Amoy chain anchor. No mocks in the critical path.
+Real cryptography. Real `did:web` hosting. Real IPFS CIDs with optional
+Arweave persistence. Real Polygon Amoy chain anchor. No mocks in the
+critical path.
 
 ## What this implements
 
@@ -16,7 +17,8 @@ For every filing, the registry does the following:
    dispute-resolution mechanisms, legal-representative authorization, and
    decentralization/governance attestations. Accepted filings are recorded as
    evidence intake only; the registry does not certify legal status.
-2. Pins the governance bytes to IPFS, computing a real CIDv1. Mandatory.
+2. Pins the governance bytes locally under a real IPFS CIDv1, and optionally
+   persists the same bytes to Arweave through Turbo. Mandatory.
 3. Builds a DAO `did:web` document and a registered-agent `did:web`
    document, linked bidirectionally via `alsoKnownAs`.
 4. Signs both documents with the registry's Ed25519 controller key
@@ -47,8 +49,8 @@ This MVP is also meant to teach the full stack to a non-specialist reviewer:
   a filesystem under `data/`; a hardened deployment would replace this with a
   database/object store.
 - `src/ipfs.js` creates content-addressed governance bytes. Even when public
-  pinning is not configured, the CID and local blob let the verifier prove the
-  bytes have not changed.
+  Arweave persistence is not configured, the CID and local blob let the
+  verifier prove the bytes have not changed.
 - `contracts/DAORegistryAnchor.sol` is the public notary. It records a hash of
   each DID document version on Polygon Amoy.
 - `src/verifier.js` is the independent auditor. It resolves the public DID
@@ -65,8 +67,8 @@ verifier shows whether the pieces still agree.
                                      │ anchor(registryId, kind, version, sha256)
                                      │
    ┌─────────────┐  POST /api/file   │              ┌─────────────┐
-   │  Filing UI  │ ─────────────────►│ Publication  │ ────► IPFS   │ Pinata
-   │ public/     │                   │ orchestrator │       (pin)  │ + local pin
+   │  Filing UI  │ ─────────────────►│ Publication  │ ────► IPFS   │ local CID
+   │ public/     │                   │ orchestrator │       (pin)  │ + Arweave
    └─────────────┘                   └──────┬───────┘              └─────────────┘
                                             │ saveRecord
                                             ▼
@@ -88,8 +90,9 @@ verifier shows whether the pieces still agree.
 - Node.js 20 or newer (for native `fetch`, `--watch`, `node:test`).
 - A Polygon Amoy test account with a small amount of test MATIC. Get free
   test MATIC at https://faucet.polygon.technology.
-- (Optional) A Pinata account and API JWT for public IPFS pinning. Without it,
-  the registry computes a real CIDv1 and pins to a local blob store.
+- (Optional) An Arweave wallet with Turbo credits for public permanent
+  persistence. Without it, the registry computes a real CIDv1 and pins to a
+  local blob store.
 
 ## Quick start
 
@@ -213,11 +216,11 @@ This is a reference. Before production, harden these:
 - The contract `owner` is the deployer's EOA. The contract supports a
   two-step `transferOwnership` / `acceptOwnership` flow; production should
   use it to hand ownership to a multisig (Gnosis Safe) plus a timelock.
-- IPFS pinning falls back to local storage when Pinata is not
-  configured. The publication API surfaces `publicPinStatus` and a
+- Public persistence falls back to local CID storage when Arweave Turbo is
+  not configured. The publication API surfaces `publicPinStatus` and a
   top-level `warnings` array so an operator can detect a fall-back; before
-  production, add at least one redundant public pin, ideally with a
-  Filecoin durability deal.
+  production, add at least one redundant public durability provider and a
+  formal retention/export policy.
 - Validation is server-side authoritative; the browser checks are UX. Do
   not soften this in any future variant.
 - `POST /api/file` is open by default. Set `FILING_API_KEY` to require an

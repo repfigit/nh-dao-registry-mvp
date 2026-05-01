@@ -63,9 +63,10 @@ invalidating the signature.
 `src/ipfs.js`
 Two-mode IPFS pinning. Always computes a real CIDv1 (sha2-256 multihash,
 raw codec) from the bytes and saves them locally to `data/blobs/`. If
-`PINATA_JWT` is set, also uploads to Pinata. The local pin is what the verifier reads in CI; the public
-pin is what gives the document long-term durability. The mandatory-pin
-rule is enforced here: there is no "skip pinning" path.
+`ARWEAVE_JWK` is set, it also uploads the same bytes to Arweave through
+Turbo and records the Arweave receipt in metadata. The local pin is what
+the verifier reads in CI; Arweave is the public durability mirror. The
+mandatory-pin rule is enforced here: there is no "skip pinning" path.
 
 `src/anchor.js`
 Polygon Amoy chain anchor via ethers v6. Calls
@@ -144,7 +145,7 @@ POST /api/file ────► validateFiling()        ──► error → 400 w
        ▼
 publication.file(input, ctx)
        │
-       ├─► pin(governanceBytes)              ──► CID + local pin (+ optional w3s)
+       ├─► pin(governanceBytes)              ──► CID + local pin (+ optional Arweave)
        │
        ├─► buildDaoDocument(...)             ──► unsigned DAO doc
        ├─► buildAgentDocument(...)           ──► unsigned agent doc

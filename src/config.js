@@ -93,7 +93,7 @@ export function anchorEnabled() {
 }
 
 export function hasPublicPinning() {
-  return Boolean(process.env.PINATA_JWT);
+  return Boolean(process.env.ARWEAVE_JWK);
 }
 
 /* ---------- controller key ---------- */

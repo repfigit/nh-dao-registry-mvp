@@ -10,7 +10,7 @@ Deploy the committed MVP as a working public reference service with:
 - HTTPS `did:web` hosting.
 - Persistent record and blob storage.
 - Polygon Amoy anchor configuration.
-- Optional Pinata public IPFS pinning.
+- Optional Arweave Turbo public persistence for governance bytes.
 - Filing API authentication.
 - CI checks before deploy.
 - Basic backup and recovery.
@@ -68,8 +68,9 @@ ANCHOR_BASE_DELAY_MS=500
 # Strongly preferred for deployed MVP:
 CONTROLLER_PRIVATE_KEY=<64-hex-char-ed25519-seed>
 
-# Optional public pinning:
-PINATA_JWT=
+# Optional public persistence:
+ARWEAVE_JWK=<full-arweave-wallet-json>
+ARWEAVE_TURBO_TOKEN=arweave
 ```
 
 For MVP deployment, `CONTROLLER_PRIVATE_KEY` should come from the hosting platform's secret store. If it is omitted, the app creates `data/keys/controller.json`; that is acceptable only when the `data/` volume is encrypted, persistent, backed up, and access-restricted.
@@ -82,7 +83,7 @@ The simplest supported MVP target is:
 - One persistent encrypted volume mounted at `./data`.
 - Reverse proxy or platform-managed HTTPS in front of port `3000`.
 - Outbound HTTPS access to the configured Polygon Amoy RPC provider.
-- Optional outbound HTTPS access to Pinata.
+- Optional outbound HTTPS access to Arweave Turbo.
 
 Suitable first targets include a small VM, a single ECS service with EFS, Fly.io/Render/Railway-like persistent disk hosting, or a container on a managed PaaS that supports durable mounted storage.
 

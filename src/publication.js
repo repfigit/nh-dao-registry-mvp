@@ -208,6 +208,7 @@ export async function file(input, ctx) {
       contentHash: `sha256:${governanceContentHash}`,
       publicPin: pinned.public,
       publicPinStatus: pinned.publicPinStatus,
+      arweave: pinned.arweave || null,
     },
     contracts: filing.contracts,
     compliance: filing.compliance,
